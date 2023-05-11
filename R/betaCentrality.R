@@ -51,6 +51,7 @@ simBetaPath <- function(a = 1, b = 1, n = 1e3, nsim = 100,
                     betaTrans, kseq)
     t(paths)
 }
+
 ## and construct a similar plot
 plotBetaPath <- function(a, b, paths = simBetaPath(a, b),
                          kseq = exp(seq(-8, 8, by = 0.25)),
@@ -103,6 +104,54 @@ plotBetaQuants <- function(a, b, qnts = c(0.005, 0.025, 0.25),
            col = adjustcolor("firebrick", 0.5))
 }
 
+## try a mixture of two betas as well
+simBetaMix <- function(p = 0.5, b1 = list(a = 1, b = 1),
+                       b2 = list(a = 1, b = 1),
+                       n = 100, nsim = 1e3,
+                       kseq = exp(seq(-8, 8, by = 0.25))) {
+    beta1 <- runif(n*nsim) <= p # sampled from first beta
+    betaSeq <- matrix(ncol = n, nrow = nsim) # pre-allocate
+    betaSeq[beta1] <- rbeta(sum(beta1), b1$a, b1$b)
+    betaSeq[!beta1] <- rbeta(sum(!beta1), b2$a, b2$b)
+    betaTrans <- lapply(kseq, qchisq, p = betaSeq,
+                        lower.tail = FALSE) # quantiles
+    paths <- mapply(function(mt, k) pchisq(rowSums(mt), df = k*n,
+                                           lower.tail = FALSE),
+                    betaTrans, kseq)
+    t(paths)
+}
+
+## what about a quantile plot?
+plotBetaMix <- function(a, b, qnts = c(0.005, 0.025, 0.25),
+                           paths = simBetaPath(a, b),
+                           kseq = exp(seq(-8, 8, by = 0.25)),
+                           ylim1 = c(0,5), ylim2 = c(-10,1)) {
+    par(mfrow = c(1,2))
+    plot(seq(0, 1, 0.005), xlab = "x", ylab = "Density", type = "l",
+         main = paste("Beta(a =", a, ",", "b =", b, ")"),
+         dbeta(seq(0, 1, 0.005), a, b), ylim = ylim1)
+    abline(v = seq(0, 1, by = 0.2), h = seq(0, 5, by = 1),
+           col = "gray90")
+    plot(NA, xlim = range(log(kseq, base = 10)),
+         main = "Chi p-value path quantiles",
+         xlab = expression(paste(log[10], "(", kappa, ")")),
+         ylab = expression(paste(log[10], "(p)")), type = "n",
+         ylim = ylim2)
+    abline(h = seq(-10, 0, by = 2), v = seq(-3, 3, by = 1),
+           col = "gray90")
+    for (qn in qnts) {
+        polygon(log(c(kseq, rev(kseq)), base = 10),
+                c(apply(log(paths, base = 10), 1, quantile, probs = qn),
+                  rev(apply(log(paths, base = 10), 1, quantile,
+                            probs = 1-qn))),
+                col = adjustcolor("gray", 0.25), border = NA)
+    }
+    lines(x = log(kseq, 10),
+          y = apply(log(paths, base = 10), 1, median))
+    abline(h = log(0.05, base = 10), lty = 2,
+           col = adjustcolor("firebrick", 0.5))
+}
+
 ## call based on a, b, simulation settings
 nsim <- 1e3
 n <- 1e3
@@ -120,3 +169,14 @@ plotBetaQuants(a = a, b = b, paths = sims)
 ##' a = 0.2, b = 0.4
 ##' a = 1, b = 2
 ##' a = 0.9, b = 1.1
+
+## now try a mixture
+nsim <- 1e3
+n <- 1e2
+p <- 0.5
+b1 <- list(a = 1, b = 1)
+b2 <- list(a = 0.4, b = 1)
+kseq <- exp(seq(-8, 8, by = 0.1))
+mixsims <- simBetaMix(p = p, b1 = b1, b2 = b2, n = n,
+                      nsim = nsim, kseq = kseq)
+plotBetaQuants(a = a, b = b, paths = mixsims)
