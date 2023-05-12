@@ -173,9 +173,9 @@ plotBetaQuants(a = a, b = b, paths = sims)
 
 ## now try a mixture
 nsim <- 1e3
-n <- 1e2
-p <- 0.3
-b1 <- list(a = 1, b = 1)
+n <- 1e3
+p <- 0.2
+b1 <- list(a = 0.4, b = 0.2)
 b2 <- list(a = 3, b = 5)
 kseq <- exp(seq(-8, 8, by = 0.1))
 mixsims <- simBetaMix(p = p, b1 = b1, b2 = b2, n = n,
@@ -188,3 +188,5 @@ abline(h = seq(-25, 0, by = 5), v = seq(-3, 3, by = 1),
 ##' (1, 1), (0.4, 1), range of p
 ##' (3, 4), (0.4, 1), p = 0.5, 0.8
 ##' (1, 0.4), (0.4, 1), p = 0.5
+##' (1, 1), (3, 5), p = 0.3
+##' (0.4, 0.2), (3, 5), p = 0.3
