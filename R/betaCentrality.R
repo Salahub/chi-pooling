@@ -122,14 +122,17 @@ simBetaMix <- function(p = 0.5, b1 = list(a = 1, b = 1),
 }
 
 ## what about a quantile plot?
-plotBetaMix <- function(a, b, qnts = c(0.005, 0.025, 0.25),
-                           paths = simBetaPath(a, b),
-                           kseq = exp(seq(-8, 8, by = 0.25)),
-                           ylim1 = c(0,5), ylim2 = c(-10,1)) {
+plotBetaMix <- function(p, b1, b2, qnts = c(0.005, 0.025, 0.25),
+                        paths = simBetaMix(p, b1, b2),
+                        kseq = exp(seq(-8, 8, by = 0.25)),
+                        ylim1 = c(0,5), ylim2 = c(-10,1)) {
+    x <- seq(0, 1, 0.005)
     par(mfrow = c(1,2))
-    plot(seq(0, 1, 0.005), xlab = "x", ylab = "Density", type = "l",
-         main = paste("Beta(a =", a, ",", "b =", b, ")"),
-         dbeta(seq(0, 1, 0.005), a, b), ylim = ylim1)
+    plot(x = x, xlab = "x", ylab = "Density", type = "l",
+         main = paste0("Mixture of ", b1$a, ", ", b1$b, " and ",
+                       b2$a, ", ", b2$b, " (", p, "/", 1-p, ")"),
+         y = p*dbeta(x, b1$a, b1$b) + (1-p)*dbeta(x, b2$a, b2$b),
+         ylim = ylim1)
     abline(v = seq(0, 1, by = 0.2), h = seq(0, 5, by = 1),
            col = "gray90")
     plot(NA, xlim = range(log(kseq, base = 10)),
@@ -137,8 +140,6 @@ plotBetaMix <- function(a, b, qnts = c(0.005, 0.025, 0.25),
          xlab = expression(paste(log[10], "(", kappa, ")")),
          ylab = expression(paste(log[10], "(p)")), type = "n",
          ylim = ylim2)
-    abline(h = seq(-10, 0, by = 2), v = seq(-3, 3, by = 1),
-           col = "gray90")
     for (qn in qnts) {
         polygon(log(c(kseq, rev(kseq)), base = 10),
                 c(apply(log(paths, base = 10), 1, quantile, probs = qn),
@@ -173,10 +174,17 @@ plotBetaQuants(a = a, b = b, paths = sims)
 ## now try a mixture
 nsim <- 1e3
 n <- 1e2
-p <- 0.5
+p <- 0.3
 b1 <- list(a = 1, b = 1)
-b2 <- list(a = 0.4, b = 1)
+b2 <- list(a = 3, b = 5)
 kseq <- exp(seq(-8, 8, by = 0.1))
 mixsims <- simBetaMix(p = p, b1 = b1, b2 = b2, n = n,
                       nsim = nsim, kseq = kseq)
-plotBetaQuants(a = a, b = b, paths = mixsims)
+plotBetaMix(p = p, b1 = b1, b2 = b2, paths = mixsims, kseq = kseq,
+            ylim2 = c(-25, 0))
+abline(h = seq(-25, 0, by = 5), v = seq(-3, 3, by = 1),
+       col = adjustcolor("gray", 0.4))
+##' settings to include:
+##' (1, 1), (0.4, 1), range of p
+##' (3, 4), (0.4, 1), p = 0.5, 0.8
+##' (1, 0.4), (0.4, 1), p = 0.5
