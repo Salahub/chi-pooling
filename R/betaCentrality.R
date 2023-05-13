@@ -12,39 +12,12 @@ poolChi <- function(p, k) {
            lower.tail = FALSE)
 }
 
-## looking at pooled p-values paths for beta distributions
-## first assay to get a sense
-step <- 0.5
-a <- seq(0.5, 5, by = step)
-b <- seq(0.5, 5, by = step)
-params <- expand.grid(b = b, a = a)
-betas <- lapply(seq_len(nrow(params)),
-                function(ii) function(n) rbeta(n, params$a[ii],
-                                               params$b[ii]))
-## generate random p-values
-nsim <- 1e4
-samps <- lapply(betas, function(f) f(nsim))
-## sweep with pooled p kappas
-kseq <- exp(seq(-8, 8, by = 0.5))
-pools <- lapply(samps, function(smp) sapply(kseq, poolChi, p = smp))
-
-## plot one example
-ii <- 13
-par(mfrow = c(1,2))
-plot(seq(0, 1, 0.01), xlab = "x", ylab = "Density", type = "l",
-     main = paste("a =", params$a[ii], ",", "b =", params$b[ii]),
-     dbeta(seq(0, 1, 0.01), params$a[ii], params$b[ii]),
-     ylim = c(0,5))
-plot(log(kseq), log(pools[[ii]]), main = "Chi p-value path",
-     xlab = expression(paste0("log(", kappa, ")")),
-     ylab = "log(p)", type = "l", ylim = c(-10, 1))
-abline(h = log(0.05), lty = 2)
-
 ## make this more robust with repeated samples...
 simBetaPath <- function(a = 1, b = 1, n = 1e3, nsim = 100,
                         kseq = exp(seq(-8, 8, by = 0.25))) {
     betaSamps <- matrix(rbeta(n*nsim, a, b), ncol = n) # sim matrix
-    betaTrans <- lapply(kseq, qchisq, p = betaSamps,
+    betaTrans <- lapply(kseq, qchisq,
+                        p = betaSamps,
                         lower.tail = FALSE) # quantile values
     paths <- mapply(function(mt, k) pchisq(rowSums(mt), df = k*n,
                                            lower.tail = FALSE),
@@ -195,6 +168,8 @@ abline(h = seq(-25, 0, by = 5), v = seq(-3, 3, by = 1),
 nsim <- 1e5
 M <- c(2, 10, 100, 500, 1000, 10000)
 kseq <- exp(seq(-8, 8, by = 0.1))
-nullCurves <- lapply(M, function(m) simBetaPath(a = 1, b = 1,
-                                                n = m, nsim = nsim,
-                                                kseq = kseq)
+nullCurves <- lapply(M,
+                     function(m) simBetaPath(a = 1, b = 1,
+                                             n = m, nsim = nsim,
+                                             kseq = kseq))
+saveRDS(nullcurves, file = "nullCurves.Rds")
