@@ -50,41 +50,31 @@ simBetaPath <- function(a = 1, b = 1, n = 1e3, nsim = 100,
     t(paths)
 }
 
-## and construct a similar plot
-plotBetaPath <- function(a, b, paths = simBetaPath(a, b),
-                         kseq = exp(seq(-8, 8, by = 0.25)),
-                         ylim1 = c(0,5), ylim2 = c(-10,1)) {
-    par(mfrow = c(1,2))
-    plot(seq(0, 1, 0.01), xlab = "x", ylab = "Density", type = "l",
-         main = paste("Beta(a =", a, ",", "b =", b, ")"),
-         dbeta(seq(0, 1, 0.01), a, b), ylim = ylim1)
-    plot(NA, xlim = range(log(kseq, base = 10)),
-         main = "Chi p-value path",
-         xlab = expression(paste(log[10], "(", kappa, ")")),
-         ylab = expression(paste(log[10], "(p)")), type = "n",
-         ylim = ylim2)
-    for (jj in seq_len(ncol(paths))) {
-        lines(log(kseq, base = 10), log(paths[,jj], base = 10),
-              col = adjustcolor("black", 0.6))
-    }
-    abline(h = log(0.05, base = 10), lty = 2,
-           col = adjustcolor("firebrick", 0.5))
-}
-
-## what about a quantile plot?
+## quantile plot of central range
 addQuantPoly <- function(qnts = c(0.005, 0.025, 0.25),
                          paths = simBetaPath(a, b),
                          kseq = exp(seq(-8, 8, by = 0.25)),
-                         ...) {
+                         labpos = c("left", "top"), ...) {
     for (qn in qnts) {
         polygon(log(c(kseq, rev(kseq)), base = 10),
-                c(apply(log(paths, base = 10), 1, quantile, probs = qn),
+                c(apply(log(paths, base = 10), 1, quantile, 
+                        probs = qn),
                   rev(apply(log(paths, base = 10), 1, quantile,
                             probs = 1-qn))),
                 col = adjustcolor("gray", 0.25), border = NA)
-        text(x = log(kseq[1], 10), labels = 1-2*qn,
-             y = log(quantile(paths[1,], 1-qn), 10),
-             adj = c(0, 0.5), ...)
+        if (labpos[1] == "left") {
+            xind <- 1
+        } else if (labpos[1] == "right") {
+            xind <- length(kseq)
+        }
+        if (labpos[2] == "top") {
+            yq <- 1-qn
+        } else if (labpos[2] == "bottom") {
+            yq <- qn
+        }
+        text(x = log(kseq[xind], 10),
+             y = quantile(log(paths[xind,], base = 10), yq),
+             labels = 1-2*qn, adj = c(0.5, 0.5), ...)
     }
     lines(x = log(kseq, 10),
           y = apply(log(paths, base = 10), 1, median))
@@ -107,101 +97,109 @@ simBetaMix <- function(p = 0.5, b1 = list(a = 1, b = 1),
     t(paths)
 }
 
-## what about a quantile plot?
-plotBetaMix <- function(p, b1, b2, qnts = c(0.005, 0.025, 0.25),
-                        paths = simBetaMix(p, b1, b2),
-                        kseq = exp(seq(-8, 8, by = 0.25)),
-                        ylim1 = c(0,5), ylim2 = c(-10,1)) {
-    x <- seq(0, 1, 0.005)
-    par(mfrow = c(1,2))
-    plot(x = x, xlab = "x", ylab = "Density", type = "l",
-         main = paste0("Mixture of ", b1$a, ", ", b1$b, " and ",
-                       b2$a, ", ", b2$b, " (", p, "/", 1-p, ")"),
-         y = p*dbeta(x, b1$a, b1$b) + (1-p)*dbeta(x, b2$a, b2$b),
-         ylim = ylim1)
-    abline(v = seq(0, 1, by = 0.2), h = seq(0, 5, by = 1),
-           col = "gray90")
-    plot(NA, xlim = range(log(kseq, base = 10)),
-         main = "Chi p-value path quantiles",
-         xlab = expression(paste(log[10], "(", kappa, ")")),
-         ylab = expression(paste(log[10], "(p)")), type = "n",
-         ylim = ylim2)
-    for (qn in qnts) {
-        polygon(log(c(kseq, rev(kseq)), base = 10),
-                c(apply(log(paths, base = 10), 1, quantile, probs = qn),
-                  rev(apply(log(paths, base = 10), 1, quantile,
-                            probs = 1-qn))),
-                col = adjustcolor("gray", 0.25), border = NA)
-    }
-    lines(x = log(kseq, 10),
-          y = apply(log(paths, base = 10), 1, median))
-    abline(h = log(0.05, base = 10), lty = 2,
-           col = adjustcolor("firebrick", 0.5))
-}
+## load the null curve min quantiles (100,000 reps)
+nullQuants <- readRDS("curveMinQuantiles.Rds")
+
+## SINGLE DENSITY ####################################################
+##' cases for chapter
+##' a = 1, b = 1, n = 1e2
+##' a = 1, b = 0.5, n = 1e2
+##' a = 0.5, b = 1, n = 1e2
+##' a = 0.4, b = 0.4, n = 1e2
+##' a = 0.4, b = 0.2, n = 1e2
+##' a = 4, b = 4, n = 1e2
+##' a = 2, b = 4, n = 1e2
 
 ## call based on a, b, simulation settings
 nsim <- 1e3
 n <- 1e2
-a <- 0.4
-b <- 0.4
-kseq <- exp(seq(-8, 8, by = 0.1))
-sims <- simBetaPath(a = a, b = b, n = n, nsim = nsim)
+a <- 1
+b <- 1
+kseq <- exp(seq(-8, 8, by = 0.25))
+sims <- simBetaPath(a = a, b = b, n = n, nsim = nsim,
+                    kseq = kseq)
 
 ## plot these results
 xpos <- seq(0, 1, 0.005)
+png(paste0("beta", a, b, "dens.png"), width = 360, height = 360)
 ## the density
 narrowPlot(xgrid = seq(0, 1, by = 0.2), ygrid = seq(0, 5, by = 1),
-           main = paste("Beta(", a, ",", "", b, ")"),
+           main = paste0("Beta(", a, ", ", "", b, ")"),
            xlab = "x", ylab = "Density")
 lines(xpos, dbeta(xpos, a, b))
+dev.off()
 
+png(paste0("beta", a, b, "quants.png"), width = 360, height = 360)
+## the central quantiles
 narrowPlot(xgrid = seq(-3, 3, by = 1), ygrid = seq(-15, 0, by = 3),
            xlim = c(-3.5, 3.5),
            main = "Pooled p-value central quantiles",
            xlab = expression(paste(log[10], "(", kappa, ")")),
            ylab = expression(paste(log[10], "(p)")))
-addQuantPoly(paths = sims, cex = 0.8)
-abline(h = log(0.05, base = 10), lty = 2,
-       col = adjustcolor("firebrick", 0.5))
+addQuantPoly(paths = sims, cex = 0.8, labpos = c("right", "bottom"),
+             kseq = kseq)
+quantLevs <- c("5%", "1%", "0.1%")
+abline(h = log(nullQuants[quantLevs, as.character(n)], 10),
+       lty = 2, col = "firebrick")
+text(x = rep(-3.2, 3), labels = quantLevs, cex = 0.8,
+     y = log(nullQuants[quantLevs, as.character(n)], 10),
+     adj = c(0.5, -0.2))
+dev.off()
 
-
-##' some interesting settings:
-##' a = 0.4, b = 0.2
-##' a = 0.82, b = 0.85
-##' a = 3, b = 4
-##' a = 4, b = 3
-##' a = 0.85, b = 0.82
-##' a = 0.2, b = 0.4
-##' a = 1, b = 2
-##' a = 0.9, b = 1.1
+## MIXTURE ###########################################################
+##' settings to include:
+##' (0.1, 1), (1, 1), n = 1e2, p = 0.05
+##' (3, 4), (0.4, 1), n = 1e2, p = 0.8
 
 ## now try a mixture
 nsim <- 1e3
-n <- 1e3
-p <- 0.3
-b1 <- list(a = 0.4, b = 0.2)
-b2 <- list(a = 3, b = 5)
-kseq <- exp(seq(-8, 8, by = 0.1))
+n <- 1e2
+p <- 0.05
+b1 <- list(a = 0.1, b = 1)
+b2 <- list(a = 1, b = 1)
+kseq <- exp(seq(-8, 8, by = 0.25))
 mixsims <- simBetaMix(p = p, b1 = b1, b2 = b2, n = n,
                       nsim = nsim, kseq = kseq)
-plotBetaMix(p = p, b1 = b1, b2 = b2, paths = mixsims, kseq = kseq,
-            ylim2 = c(-25, 0))
-abline(h = seq(-25, 0, by = 5), v = seq(-3, 3, by = 1),
-       col = adjustcolor("gray", 0.4))
- ##' settings to include:
-##' (1, 1), (0.4, 1), range of p
-##' (3, 4), (0.4, 1), p = 0.5, 0.8
-##' (1, 0.4), (0.4, 1), p = 0.5
-##' (1, 1), (3, 5), p = 0.3
-##' (0.4, 0.2), (3, 5), p = 0.3
 
+## plot these results
+xpos <- seq(0, 1, 0.005)
+png(paste0("betamix", b1$a, b1$b,"-", b2$a, b2$b, p, "dens.png"),
+    width = 360, height = 360)
+## the density
+narrowPlot(xgrid = seq(0, 1, by = 0.2), ygrid = seq(0, 5, by = 1),
+           main = paste0("Beta(", b1$a, ", ", b1$b, ") and Beta(",
+                         b2$a, ", ", b2$b, ") mixture (", p, "/", 1-p,
+                         ")"),
+           xlab = "x", ylab = "Density")
+lines(xpos, p*dbeta(xpos, b1$a, b1$b) + (1-p)*dbeta(xpos, b2$a, b2$b))
+dev.off()
+
+png(paste0("betamix", b1$a, b1$b,"-", b2$a, b2$b, p, "quants.png"),
+    width = 360, height = 360)
+## the central quantiles
+narrowPlot(xgrid = seq(-3, 3, by = 1), ygrid = seq(-15, 0, by = 3),
+           xlim = c(-3.5, 3.5),
+           main = "Pooled p-value central quantiles",
+           xlab = expression(paste(log[10], "(", kappa, ")")),
+           ylab = expression(paste(log[10], "(p)")))
+addQuantPoly(paths = mixsims, cex = 0.8, labpos = c("right", "bottom"))
+quantLevs <- c("5%", "1%", "0.1%")
+abline(h = log(nullQuants[quantLevs, as.character(n)], 10),
+       lty = 2, col = "firebrick")
+text(x = rep(-3.2, 3), labels = quantLevs, cex = 0.8,
+     y = log(nullQuants[quantLevs, as.character(n)], 10),
+     adj = c(0.5, -0.2))
+dev.off()
+
+## NULL QUANTILES ####################################################
 ##' get min values across curves for the null case
+##' meant to be run in a large computing environment with many cores
 tol <- 1e6 # tolerance for load balancing
 nsim <- 1e5 # number of simulations
 M <- c(2, 10, 100, 500, 1000, 10000) # sample sizes
 total <- nsim*M # total random numbers
 batches <- vector(mode = "list", length = length(M))
-for (ii in seq_along(M)){ # split into batches
+for (ii in seq_along(M)){ # split into batches to control computation
     if (total[ii] > tol) {
         batches[[ii]] <- rep(tol, total[ii]/tol)/M[ii]
     } else batches[[ii]] <- nsim
@@ -214,7 +212,7 @@ ncores <- detectCores()/2
 clust <- makeCluster(ncores)
 clusterExport(clust, varlist = c("simBetaPath", "Ms", "batches",
                                  "kseq", "nsim"))
-nullCurves <- parLapply(clust, # run all examples
+nullCurves <- parLapply(clust, # run batches across cluster
                         seq_along(Ms),
                         function(ii) simBetaPath(a = 1, b = 1,
                                                  n = Ms[ii],
