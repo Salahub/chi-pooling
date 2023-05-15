@@ -197,13 +197,13 @@ abline(h = seq(-25, 0, by = 5), v = seq(-3, 3, by = 1),
 
 ##' get min values across curves for the null case
 tol <- 1e6 # tolerance for load balancing
-nsim <- 1e4 # number of simulations
+nsim <- 1e5 # number of simulations
 M <- c(2, 10, 100, 500, 1000, 10000) # sample sizes
 total <- nsim*M # total random numbers
 batches <- vector(mode = "list", length = length(M))
 for (ii in seq_along(M)){ # split into batches
     if (total[ii] > tol) {
-        batches[[ii]] <- rep(tol, total[ii]/tol)
+        batches[[ii]] <- rep(tol, total[ii]/tol)/M[ii]
     } else batches[[ii]] <- nsim
 }
 Ms <- rep(M, times = sapply(batches, length)) # repeat M for batches
@@ -214,9 +214,13 @@ ncores <- detectCores()/2
 clust <- makeCluster(ncores)
 clusterExport(clust, varlist = c("simBetaPath", "Ms", "batches",
                                  "kseq", "nsim"))
-nullCurves <- lapply(M, # store object
-                     function(m) simBetaPath(a = 1, b = 1,
-                                             n = m, nsim = nsim,
-                                             kseq = kseq))
+nullCurves <- parLapply(clust, # run all examples
+                        seq_along(Ms),
+                        function(ii) simBetaPath(a = 1, b = 1,
+                                                 n = Ms[ii],
+                                                 nsim = batches[ii],
+                                                 kseq = kseq))
 stopCluster(clust)
-saveRDS(nullCurves, file = "nullCurves.Rds")
+curvesByM <- split(nullCurves, Ms)
+nullCurves <- lapply(testM, function(el) do.call(cbind, el))
+saveRDS(list(Ms, nullCurves), file = "nullCurves.Rds")
