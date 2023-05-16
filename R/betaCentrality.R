@@ -57,15 +57,17 @@ addQuantPoly <- function(qnts = c(0.005, 0.025, 0.25),
                          labpos = c("left", "top"), ...) {
     for (qn in qnts) {
         polygon(log(c(kseq, rev(kseq)), base = 10),
-                c(apply(log(paths, base = 10), 1, quantile, 
+                c(apply(log(paths, base = 10), 1, quantile,
                         probs = qn),
                   rev(apply(log(paths, base = 10), 1, quantile,
                             probs = 1-qn))),
                 col = adjustcolor("gray", 0.25), border = NA)
         if (labpos[1] == "left") {
             xind <- 1
+            adj <- c(0, 0.5)
         } else if (labpos[1] == "right") {
             xind <- length(kseq)
+            adj <- c(1, 0.5)
         }
         if (labpos[2] == "top") {
             yq <- 1-qn
@@ -74,7 +76,7 @@ addQuantPoly <- function(qnts = c(0.005, 0.025, 0.25),
         }
         text(x = log(kseq[xind], 10),
              y = quantile(log(paths[xind,], base = 10), yq),
-             labels = 1-2*qn, adj = c(0.5, 0.5), ...)
+             labels = 1-2*qn, adj = adj, ...)
     }
     lines(x = log(kseq, 10),
           y = apply(log(paths, base = 10), 1, median))
@@ -113,15 +115,16 @@ nullQuants <- readRDS("curveMinQuantiles.Rds")
 ## call based on a, b, simulation settings
 nsim <- 1e3
 n <- 1e2
-a <- 1
-b <- 1
+a <- 2
+b <- 4
 kseq <- exp(seq(-8, 8, by = 0.25))
 sims <- simBetaPath(a = a, b = b, n = n, nsim = nsim,
                     kseq = kseq)
 
 ## plot these results
 xpos <- seq(0, 1, 0.005)
-png(paste0("beta", a, b, "dens.png"), width = 360, height = 360)
+png(paste0("beta", a, b, "dens.png"), width = 2.5, height = 2.5,
+    units = "in", res = 240)
 ## the density
 narrowPlot(xgrid = seq(0, 1, by = 0.2), ygrid = seq(0, 5, by = 1),
            main = paste0("Beta(", a, ", ", "", b, ")"),
@@ -129,19 +132,20 @@ narrowPlot(xgrid = seq(0, 1, by = 0.2), ygrid = seq(0, 5, by = 1),
 lines(xpos, dbeta(xpos, a, b))
 dev.off()
 
-png(paste0("beta", a, b, "quants.png"), width = 360, height = 360)
+png(paste0("beta", a, b, "quants.png"), width = 2.5, height = 2.5,
+    units = "in", res = 240)
 ## the central quantiles
 narrowPlot(xgrid = seq(-3, 3, by = 1), ygrid = seq(-15, 0, by = 3),
            xlim = c(-3.5, 3.5),
            main = "Pooled p-value central quantiles",
            xlab = expression(paste(log[10], "(", kappa, ")")),
            ylab = expression(paste(log[10], "(p)")))
-addQuantPoly(paths = sims, cex = 0.8, labpos = c("right", "bottom"),
+addQuantPoly(paths = sims, cex = 0.6, labpos = c("right", "bottom"),
              kseq = kseq)
 quantLevs <- c("5%", "1%", "0.1%")
 abline(h = log(nullQuants[quantLevs, as.character(n)], 10),
        lty = 2, col = "firebrick")
-text(x = rep(-3.2, 3), labels = quantLevs, cex = 0.8,
+text(x = rep(-3.2, 3), labels = quantLevs, cex = 0.6,
      y = log(nullQuants[quantLevs, as.character(n)], 10),
      adj = c(0.5, -0.2))
 dev.off()
@@ -164,29 +168,29 @@ mixsims <- simBetaMix(p = p, b1 = b1, b2 = b2, n = n,
 ## plot these results
 xpos <- seq(0, 1, 0.005)
 png(paste0("betamix", b1$a, b1$b,"-", b2$a, b2$b, p, "dens.png"),
-    width = 360, height = 360)
+    width = 2.5, height = 2.5, units = "in", res = 240)
 ## the density
 narrowPlot(xgrid = seq(0, 1, by = 0.2), ygrid = seq(0, 5, by = 1),
-           main = paste0("Beta(", b1$a, ", ", b1$b, ") and Beta(",
-                         b2$a, ", ", b2$b, ") mixture (", p, "/", 1-p,
+           main = paste0("Beta(", b1$a, ", ", b1$b, ") and (",
+                         b2$a, ", ", b2$b, ") mix (", p, "/", 1-p,
                          ")"),
            xlab = "x", ylab = "Density")
 lines(xpos, p*dbeta(xpos, b1$a, b1$b) + (1-p)*dbeta(xpos, b2$a, b2$b))
 dev.off()
 
 png(paste0("betamix", b1$a, b1$b,"-", b2$a, b2$b, p, "quants.png"),
-    width = 360, height = 360)
+    width = 2.5, height = 2.5, units = "in", res = 240)
 ## the central quantiles
 narrowPlot(xgrid = seq(-3, 3, by = 1), ygrid = seq(-15, 0, by = 3),
            xlim = c(-3.5, 3.5),
            main = "Pooled p-value central quantiles",
            xlab = expression(paste(log[10], "(", kappa, ")")),
            ylab = expression(paste(log[10], "(p)")))
-addQuantPoly(paths = mixsims, cex = 0.8, labpos = c("right", "bottom"))
+addQuantPoly(paths = mixsims, cex = 0.6, labpos = c("right", "bottom"))
 quantLevs <- c("5%", "1%", "0.1%")
 abline(h = log(nullQuants[quantLevs, as.character(n)], 10),
        lty = 2, col = "firebrick")
-text(x = rep(-3.2, 3), labels = quantLevs, cex = 0.8,
+text(x = rep(-3.2, 3), labels = quantLevs, cex = 0.6,
      y = log(nullQuants[quantLevs, as.character(n)], 10),
      adj = c(0.5, -0.2))
 dev.off()

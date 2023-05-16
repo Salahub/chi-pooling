@@ -8,8 +8,8 @@ ster <- 0.005
 nsim <- (0.5/ster)^2
 
 ## COMPUTE :: given w seq, the corresponding a values to span D(a,w)
-wDsets <- expand.grid(w = exp(seq(-6, 0, by = 1)), # w values
-                      logD = seq(-5, 5, by = 0.5)) # target logDivs
+wDsets <- expand.grid(w = exp(seq(-6, 0, by = 0.1)), # w values
+                      logD = seq(-5, 5, by = 0.1)) # target logDivs
 aseq <- apply(wDsets, 1, # find a values given w, logDiv
               function(row) findA(row[1], row[2],
                                   tol = .Machine$double.eps))
@@ -17,8 +17,8 @@ logD <- log(betaDiv(aseq, wDsets[,1])) # compute actual logDiv
 
 ## SETUP: a sequence of M values, k values (for the chi method), and
 ## a and w values to parameterize data generation
-kseq <- c(exp(c(-8,-4,0)), 2, exp(c(4, 8))) # k values for chi
-Mval <- 10 # total number of tests
+kseq <- exp(seq(-8, 8, by = 0.5)) # k values for chi
+Mval <- 20 # total number of tests
 m1seq <- seq(0, Mval, by = 1)
 params <- data.frame(a = rep(aseq, times = length(m1seq)),
                      w = rep(wDsets[,"w"], times = length(m1seq)),
