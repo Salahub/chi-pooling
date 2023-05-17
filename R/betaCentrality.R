@@ -115,8 +115,8 @@ nullQuants <- readRDS("curveMinQuantiles.Rds")
 ## call based on a, b, simulation settings
 nsim <- 1e3
 n <- 1e2
-a <- 2
-b <- 4
+a <- 0.5
+b <- 1
 kseq <- exp(seq(-8, 8, by = 0.25))
 sims <- simBetaPath(a = a, b = b, n = n, nsim = nsim,
                     kseq = kseq)

@@ -114,12 +114,12 @@ lwDists <- mapply(function(dt, w) apply(dt, 1, hrBeta, w = w),
 ## plot densities of these
 reprs <- c(1, 2, 3, 4) # select densities
 lwmax <-  max(abs(lwDists)) # limits
-png("lwDens.png", width = 3.5, height = 2.5, units = "in",
+png("lhrDens.png", width = 3.5, height = 2.5, units = "in",
     res = 400)
 narrowPlot(xgrid = seq(-20, 20, by = 20), xlim = c(-lwmax, lwmax),
            ygrid = seq(0, 0.15, by = 0.05), ylab = "Density",
-           xlab = expression(l[w]),
-           main = expression(paste("Distribution of ", l[w],
+           xlab = expression(l[HR]),
+           main = expression(paste("Distribution of ", l[HR],
                                    " by ", w)))
 ## add the densities over top
 for (ii in reprs) {
@@ -139,7 +139,7 @@ narrowPlot(ygrid = seq(0.2, 1, by = 0.2), xlab = "ln(D(a, w))",
            xgrid = seq(-5, 5, length.out = 5), ylab = "Power",
            ylim = c(0.05, 1.02), xlim = c(-5, 5),
            mars = c(2.1, 2.1, 1.1, 3.1),
-           main = expression(paste("Power of ", g[w],
+           main = expression(paste("Power of HR(", bold(p), ", w)",
                                    " by D(a, w) and M")))
 for (ii in seq_along(M2inds)) { # lines connecting M = 2 to M = 20
     if (params$w[ii] %in% exp(c(-6, 0))) {
@@ -173,7 +173,8 @@ png("klDivPowByw.png", width = 2.6, height = 2.6, units = "in", res = 400)
 narrowPlot(ygrid = seq(0.2, 1, by = 0.2), xlab = "ln(D(a, w))",
            xgrid = seq(-5, 5, length.out = 5), ylab = "Power",
            ylim = c(0.05, 1), xlim = c(-5, 5),
-           main = expression(paste(g[w], " power curves by D(a,w)")))
+           main = expression(paste("HR(", bold(p), ", w)",
+                                   " power curves by D(a,w)")))
 for (w in unique(params$w)) { # curve for each w
     inds <- abs(params$w - w) < .Machine$double.eps &
         params$M == 2 # select cases from design mat
