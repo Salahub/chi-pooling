@@ -8,8 +8,8 @@ ster <- 0.005
 nsim <- (0.5/ster)^2
 
 ## COMPUTE :: given w seq, the corresponding a values to span D(a,w)
-wDsets <- expand.grid(w = exp(seq(-6, 0, by = 0.1)), # w values
-                      logD = seq(-5, 5, by = 0.1)) # target logDivs
+wDsets <- expand.grid(w = exp(seq(-6, 0, by = 0.5)), # w values
+                      logD = seq(-5, 5, by = 0.5)) # target logDivs
 aseq <- apply(wDsets, 1, # find a values given w, logDiv
               function(row) findA(row[1], row[2],
                                   tol = .Machine$double.eps))
