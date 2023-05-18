@@ -1,13 +1,11 @@
 source("poolFunctions.R")
 
-## simulating t_w under H_3: not all data come from the null
-## distribution, but all departures are of the same form
-
-## COMPUTE :: necessary number of trials for a given standard error
+## CONSTANTS #########################################################
+## necessary number of trials for a given standard error
 ster <- 0.005
 nsim <- (0.5/ster)^2
 
-## COMPUTE :: given w seq, the corresponding a values to span D(a,w)
+## given a w seq, the corresponding a values to span D(a,w)
 wDsets <- expand.grid(w = exp(seq(-6, 0, by = 1)), # w values
                       logD = seq(-5, 5, by = 0.25)) # target logDivs
 aseq <- apply(wDsets, 1, # find a values given w, logDiv
@@ -15,8 +13,8 @@ aseq <- apply(wDsets, 1, # find a values given w, logDiv
                                   tol = .Machine$double.eps))
 logD <- log(betaDiv(aseq, wDsets[,1])) # compute actual logDiv
 
-## SETUP: a sequence of M values, k values (for the chi method), and
-## a and w values to parameterize data generation
+## a sequence of M values, k values, a and w values to parameterize
+## data generation
 kseq <- exp(seq(-8, 8, by = 0.5)) # k values for chi
 Mval <- 40 # total number of tests
 m1seq <- seq(0, Mval, by = 1)
@@ -25,7 +23,7 @@ preparams <- data.frame(a = rep(aseq, times = length(m1seq)),
                         m1 = rep(m1seq, each = length(aseq)),
                         logD = rep(logD, times = length(m1seq)))
 params <- data.frame(preparams, k = rep(kseq, each = nrow(preparams)))
-altSeq <- lapply(seq_len(nrow(params)), # generate alteratives
+altSeq <- lapply(seq_len(nrow(params)), # generate alternatives
                  function(ii) {
                      with(params, pgenMix(a[ii], w[ii], m1[ii]))
                  })
@@ -53,7 +51,7 @@ powerschi <- mcmapply(chiSimPower, altLst = altLst, poolLst = poolLst,
                       nsim = nsim, seeds = sdLst, M = Mval,
                       mc.cores = ncores)
 
-## OUTPUT :: output the simulation results
+## store the simulation results
 chiPowers <- list(pars = params,
                   chi = unlist(powerschi))
 saveRDS(chiPowers, "chiPowersMap.Rds")
@@ -79,18 +77,30 @@ leastMax <- function(p) {
     first <- which(eqmax)[1]
     if (all(eqmax)) NA else first
 }
+
+largestMax <- function(p) {
+    mx <- max(p)
+    pc <- (p + mx)/2
+    eqmax <- (p - mx)/sqrt(pc*(1-pc)*2/nsim) > -1.96
+    eqmax[is.na(eqmax)] <- TRUE # fix 1, 1 case
+    last <- which(eqmax)[sum(eqmax)]
+    if (all(eqmax)) NA else last
+}
+
 chiPowLstMax <- apply(chiPowAve, c(1,2), leastMax)
+chiPowLgstMax <- apply(chiPowAve, c(1,2), largestMax)
+chiPowRng <- apply(chiPowAve, c(1,2), function(p) diff(range(p)))
 ## clean this up...
 logDNames <- as.character(seq(-5, 5, by = 0.25))
 ## store in a clean matrix
 ks <- dimnames(chiPowAve)$logk
 mapMat <- matrix(as.numeric(ks[chiPowLstMax]),
                  nrow = nrow(chiPowLstMax),
-                 dimnames = dimnames(chiPowMax))
+                 dimnames = dimnames(chiPowLstMax))
 mapMat[chiPowRng < 0.01] <- NA
 
 ## plot as a heat map
-mapPal <- hcl.colors(length(ks))
+mapPal <- hcl.colors(length(ks)/2)
 par(mar = c(2.1, 2.1, 1.1, 2.2))
 image(mapMat[logDNames,], xaxt = "n", yaxt = "n", col = mapPal,
       ylab = "", xlab = "", main = "")
@@ -116,3 +126,12 @@ text(x = bds[2] + 0.035, y = 0.82, xpd = NA, cex = 0.8,
 text(x = rep(bds[2] + 0.05, 5), y = c(0.2, 0.35, 0.5, 0.65, 0.8),
      labels = c(-8, -4, 0, 4, 8), cex = 0.8, xpd = NA,
      adj = c(-0.3,0.5))
+## filled contours instead?
+filled.contour(mapMat[logDNames,],
+               color.palette = function(n) hcl.colors(n))
+contour(mapMat[logDNames,], xaxs = "i", yaxs = "i")
+.filled.contour(x = seq(0,1, length.out = 41),
+                y = seq(0,1, length.out = 41),
+                z = mapMat[logDNames,],
+                levels = seq(-8,8,by = 1), col = mapPal)
+contour(mapMat[logDNames,], add = TRUE, col = "gray90")
