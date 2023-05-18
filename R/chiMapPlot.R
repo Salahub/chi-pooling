@@ -84,7 +84,8 @@ names(fullList) <- c(log(as.numeric(names(powByW))),
                      "Mean")
 
 ## plot each case
-for (targMat in fullList) {
+for (logw in names(fullList)) {
+    targMat <- fullList[[logw]]
 
     ## compute some different maxima
     minMax <- apply(targMat, c(1,2), leastMax)
@@ -102,23 +103,23 @@ for (targMat in fullList) {
     maxMat <- matrix(as.numeric(ks[maxMax]),
                      nrow = nrow(maxMax),
                      dimnames = dimnames(maxMax))
-    maxMat[powRngs < 0.01] <- NA
-    minMat[powRngs < 0.01] <- NA
+    maxMat[powRngs < 0.02] <- NA
+    minMat[powRngs < 0.02] <- NA
     meanMat <- (maxMat + minMat)/2
 
     ## plot the heatmaps of these
     par(mar = c(2.1, 2.1, 1.1, 3.1), mfrow = c(1,2))
-    #powerHeatMap(minMat, inds = logDNames,
-    #             main = expression(paste("Smallest ", kappa,
-    #                                     " giving maximum power")))
+    powerHeatMap(minMat, inds = logDNames,
+                 main = expression(paste("Smallest ", kappa,
+                                         " giving maximum power")))
     powerHeatMap(meanMat, inds = logDNames,
                  main = expression(paste("Mean ", kappa,
                                          " giving maximum power")))
-    powerHeatMap(powRngs, inds = logDNames,
-                 main = expression(paste("Range of powers in ", kappa)),
-                 legendLabs = c(0, 1), legendTitle = "",
-                 pal = colorRampPalette(c("white",
-                                          "firebrick"))(length(ks)/2))
+    #powerHeatMap(powRngs, inds = logDNames,
+    #             main = expression(paste("Range of powers in ", kappa)),
+    #             legendLabs = c(0, 1), legendTitle = "",
+    #             pal = colorRampPalette(c("white",
+    #                                      "firebrick"))(length(ks)/2))
 }
 
 ## filled contours instead?
