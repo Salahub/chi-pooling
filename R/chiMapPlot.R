@@ -27,7 +27,6 @@ powerHeatMap <- function(mat, inds, main,
                          legendLabs = c(-8, -4, 0, 4, 8),
                          legendTitle = expression(paste("log",
                                                         kappa))) {
-    par(mar = c(2.1, 2.1, 1.1, 2.2))
     image(mat[inds,], xaxt = "n", yaxt = "n", col = pal,
           ylab = "", xlab = "", main = "")
     mtext(main, side = 3, line = 0, cex = 0.8) # main
@@ -79,16 +78,17 @@ powByW <- lapply(split(chiPowdf, chiPowdf$w),
                             mean)
                  })
 
-## plot each of these
+## store together in one list
 fullList <- c(powByW, list(powAve))
 names(fullList) <- c(log(as.numeric(names(powByW))),
                      "Mean")
+
+## plot each case
 for (targMat in fullList) {
 
     ## compute some different maxima
     minMax <- apply(targMat, c(1,2), leastMax)
     maxMax <- apply(targMat, c(1,2), largestMax)
-    meanMax <- (minMax + maxMax)/2
     powRngs <- apply(targMat, c(1,2), function(p) diff(range(p)))
     ## clean this up...
     logDNames <- as.character(seq(-5, 5, by = 0.25))
@@ -104,13 +104,15 @@ for (targMat in fullList) {
                      dimnames = dimnames(maxMax))
     maxMat[powRngs < 0.01] <- NA
     minMat[powRngs < 0.01] <- NA
+    meanMat <- (maxMat + minMat)/2
 
     ## plot the heatmaps of these
-    powerHeatMap(minMat, inds = logDNames,
-                 main = expression(paste("Smallest ", kappa,
-                                         " giving maximum power")))
-    powerHeatMap(maxMat, inds = logDNames,
-                 main = expression(paste("Largest ", kappa,
+    par(mar = c(2.1, 2.1, 1.1, 3.1), mfrow = c(1,2))
+    #powerHeatMap(minMat, inds = logDNames,
+    #             main = expression(paste("Smallest ", kappa,
+    #                                     " giving maximum power")))
+    powerHeatMap(meanMat, inds = logDNames,
+                 main = expression(paste("Mean ", kappa,
                                          " giving maximum power")))
     powerHeatMap(powRngs, inds = logDNames,
                  main = expression(paste("Range of powers in ", kappa)),
@@ -120,9 +122,9 @@ for (targMat in fullList) {
 }
 
 ## filled contours instead?
-filled.contour(mapMat[logDNames,],
+filled.contour(minMat[logDNames,],
                color.palette = function(n) hcl.colors(n))
-contour(mapMat[logDNames,], xaxs = "i", yaxs = "i")
+contour(minMat[logDNames,], xaxs = "i", yaxs = "i")
 .filled.contour(x = seq(0,1, length.out = 41),
                 y = seq(0,1, length.out = 41),
                 z = mapMat[logDNames,],
