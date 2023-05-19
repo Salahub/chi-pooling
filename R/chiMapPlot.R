@@ -21,13 +21,13 @@ largestMax <- function(p) {
 }
 
 ## helper to make plotting easier
-powerHeatMap <- function(mat, inds, main,
-                         pal = hcl.colors(length(ks)/2,
+powerHeatMap <- function(mat, main,
+                         pal = hcl.colors(17,
                                           palette = "Temps"),
                          legendLabs = c(-8, -4, 0, 4, 8),
                          legendTitle = expression(paste("log",
                                                         kappa))) {
-    image(mat[inds,], xaxt = "n", yaxt = "n", col = pal,
+    image(mat, xaxt = "n", yaxt = "n", col = pal,
           ylab = "", xlab = "", main = "")
     mtext(main, side = 3, line = 0, cex = 0.8) # main
     mtext(expression(rho), side = 2, line = 1, cex = 0.8) # ylab
@@ -50,7 +50,7 @@ powerHeatMap <- function(mat, inds, main,
     text(x = rep(bds[2] + 0.05, length(legendLabs)), xpd = NA,
          y = seq(0.2, 0.8, length.out = length(legendLabs)),
          labels = legendLabs, cex = 0.8,
-         adj = c(-0.3,0.5))    
+         adj = c(-0.3,0.5))
 }
 
 ## CONSTANTS #########################################################
@@ -61,66 +61,86 @@ nsim <- (0.5/ster)^2
 ## read in this result
 chiPowers <- readRDS("chiPowersMap.Rds")
 ## make into single data frame
-chiPowdf <- cbind(chiPowers$pars, power = chiPowers$chi)
-## simplest map: average the power by prop and log divergence
-powAve <- tapply(chiPowdf$power,
-                 list(logD = round(chiPowdf$logD, 2),
-                      m1 = chiPowdf$m1,
-                      logk = log(chiPowdf$k)),
-                 mean)
-## other maps: by each value of w
-powByW <- lapply(split(chiPowdf, chiPowdf$w),
-                 function(df) {
-                     tapply(df$power,
-                            list(logD = round(df$logD, 2),
-                                 m1 = df$m1,
-                                 logk = log(df$k)),
-                            mean)
-                 })
+powdf <- cbind(chiPowers$pars, power = chiPowers$chi)
 
-## store together in one list
-fullList <- c(powByW, list(powAve))
-names(fullList) <- c(log(as.numeric(names(powByW))),
-                     "Mean")
+## clean up
+powdf$logD <- round(chiPowdf$logD, 2)
+powRegD <- powdf[powdf$logD %in% as.character(seq(-5, 5, by = 0.25)),]
 
-## plot each case
-for (logw in names(fullList)) {
-    targMat <- fullList[[logw]]
+## split by logw and compute each case separately
+pow_byW <- split(powRegD[, c("m1", "logD", "k", "power")],
+                 log(powRegD$w))
+## arrange as arrays
+pow_byW <- lapply(pow_byW,
+                  function(df) {
+                      tapply(df$power,
+                             list(logD = round(df$logD, 2),
+                                  m1 = df$m1,
+                                  logk = log(df$k)),
+                             mean) # identity, one value
+                  })
 
-    ## compute some different maxima
-    minMax <- apply(targMat, c(1,2), leastMax)
-    maxMax <- apply(targMat, c(1,2), largestMax)
-    powRngs <- apply(targMat, c(1,2), function(p) diff(range(p)))
-    ## clean this up...
-    logDNames <- as.character(seq(-5, 5, by = 0.25))
-    logDNames <- logDNames[logDNames %in% dimnames(minMax)$logD]
+## get max and min powers
+pow_max <- lapply(pow_byW,
+                  function(mt) apply(mt, c(1,2), max))
+pow_min <- lapply(pow_byW,
+                  function(mt) apply(mt, c(1,2), min))
+pow_rng <- mapply(`-`, pow_max, pow_min)
+## indices of matches and gap giivng number of max matches
+pow_minMax <- lapply(pow_byW,
+                     function(mt) apply(mt, c(1,2), leastMax))
+pow_maxMax <- lapply(pow_byW,
+                     function(mt) apply(mt, c(1,2), largestMax))
+pow_gaps <- mapply(`-`, pow_maxMax, pow_minMax)
 
-    ## store in a clean matrix
-    ks <- dimnames(targMat)$logk
-    minMat <- matrix(as.numeric(ks[minMax]),
-                     nrow = nrow(minMax),
-                     dimnames = dimnames(minMax))
-    maxMat <- matrix(as.numeric(ks[maxMax]),
-                     nrow = nrow(maxMax),
-                     dimnames = dimnames(maxMax))
-    maxMat[powRngs < 0.02] <- NA
-    minMat[powRngs < 0.02] <- NA
-    meanMat <- (maxMat + minMat)/2
+## convert back to parameter values
+ks <- lapply(pow_byW, function(ar) dimnames(ar)$logk)
+pow_minMats <- mapply(function(ks, mat) {
+    matrix(as.numeric(ks[mat]), nrow = nrow(mat),
+           dimnames = dimnames(mat)) },
+    ks, pow_minMax)
+pow_maxMats <- mapply(function(ks, mat) {
+    matrix(as.numeric(ks[mat]), nrow = nrow(mat),
+           dimnames = dimnames(mat)) },
+    ks, pow_maxMax)
 
-    ## plot the heatmaps of these
-    par(mar = c(2.1, 2.1, 1.1, 3.1), mfrow = c(1,2))
-    powerHeatMap(minMat, inds = logDNames,
-                 main = expression(paste("Smallest ", kappa,
-                                         " giving maximum power")))
-    powerHeatMap(meanMat, inds = logDNames,
-                 main = expression(paste("Mean ", kappa,
-                                         " giving maximum power")))
-    #powerHeatMap(powRngs, inds = logDNames,
-    #             main = expression(paste("Range of powers in ", kappa)),
-    #             legendLabs = c(0, 1), legendTitle = "",
-    #             pal = colorRampPalette(c("white",
-    #                                      "firebrick"))(length(ks)/2))
-}
+## mask the "uninteresting cases"
+pow_minMask <- mapply(function(x, y, tol) {x[y > tol] <- NA; x},
+                      pow_minMats, pow_gaps, 8)
+pow_maxMask <- mapply(function(x, y, tol) {x[y > tol] <- NA; x},
+                      pow_maxMats, pow_gaps, 8)
+
+## take a kappa
+kap <- 3
+## see where it fits
+kapMax <- mapply(function(m1, m2, k) m1 <= k & m2 >= k,
+                 pow_minMask, pow_maxMask, kap)
+kapMax[gapSize > 15] <- NA
+#kapMax[powMin > 0.9 | powMax < 0.1] <- NA
+image(kapMax[[1]])
+
+## plot the heatmaps of these
+ind <- 7
+par(mar = c(2.1, 2.1, 1.1, 3.1), mfrow = c(1,2))
+powerHeatMap(pow_minMask[[ind]],
+             main = expression(paste("Smallest ", kappa,
+                                     " giving maximum power")))
+powerHeatMap(pow_maxMask[[ind]],
+             main = expression(paste("Largest ", kappa,
+                                     " giving maximum power")))
+powerHeatMap(pow_rng[[ind]],
+             main = expression(paste("Range of powers in ", kappa)),
+             legendLabs = c(0, 1), legendTitle = "",
+             pal = colorRampPalette(c("white",
+                                      "firebrick"))(17))
+
+## new idea: take a kappa/range of kappas and produce the region where
+## it isn't different than the maximum power across all kappas, plot
+## this as a suggestive visual of likely alternatives
+
+## in support of that:
+## - prove that increasing M only increases the resolution of the plot
+## - increase the resolution and see what it looks like
 
 ## filled contours instead?
 filled.contour(minMat[logDNames,],
