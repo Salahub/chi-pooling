@@ -21,7 +21,7 @@ largestMax <- function(p) {
 }
 
 ## helper to make plotting easier
-powerHeatMap <- function(mat, main,
+powerHeatMap <- function(mat, main = "",
                          pal = hcl.colors(17,
                                           palette = "Temps"),
                          legendLabs = c(-8, -4, 0, 4, 8),
@@ -53,6 +53,50 @@ powerHeatMap <- function(mat, main,
          adj = c(-0.3,0.5))
 }
 
+## helper to make plotting easier
+alternativeHeatMap <- function(mat, main = "", pal = NULL) {
+    if (is.null(pal)) {
+        pal <- colorRampPalette(c("white",
+                                  "firebrick"))(max(mat,
+                                                    na.rm = TRUE) + 1)
+    }
+    image(mat, xaxt = "n", yaxt = "n", col = pal,
+          ylab = "", xlab = "", main = "")
+    mtext(main, side = 3, line = 0, cex = 0.8) # main
+    mtext(expression(rho), side = 2, line = 1, cex = 0.8) # ylab
+    mtext("logD(a,w)", side = 1, line = 1, padj = 0, cex = 0.8) # xlab
+    ## add ticks
+    mtext(side = 1, at = seq(0, 1, by = 0.25), text = "|", line = 0,
+          cex = 0.5, padj = -2)
+    mtext(text = seq(-5, 5, by = 2.5), at = seq(0, 1, by = 0.25),
+          side = 1, cex = 0.8)
+    mtext(side = 2, at = seq(0, 1, by = 0.2), text = "|", line = 0,
+          cex = 0.5, padj = 1)
+    mtext(text = seq(0, 1, by = 0.2), at = seq(0, 1, by = 0.2),
+          side = 2, cex = 0.8)
+    bds <- par()$usr
+    rowDist <- rowSums(mat, na.rm = TRUE)
+    colDist <- colSums(mat, na.rm = TRUE) # marginal distributions
+    vboxBds <- c(bds[2], bds[2] + 0.1, bds[3:4])
+    hboxBds <- c(bds[1:2], bds[4], bds[4] + 0.1)
+    ## density boxes
+    rect(vboxBds[1], vboxBds[3], vboxBds[2], vboxBds[4], xpd = NA)
+    rect(hboxBds[1], hboxBds[3], hboxBds[2], hboxBds[4], xpd = NA)
+    ## add marginal histograms
+    vseq <- seq(vboxBds[3], vboxBds[4],
+                length.out = length(colDist) + 1)
+    rect(vboxBds[1], vseq[1:length(colDist)],
+         vboxBds[1] + 0.9*diff(vboxBds[1:2])*(colDist/max(colDist)),
+         vseq[2:(length(colDist) + 1)], xpd = NA,
+         col = adjustcolor("firebrick", 0.5))
+    hseq <- seq(hboxBds[1], hboxBds[2],
+                length.out = length(rowDist) + 1)
+    rect(hseq[1:length(rowDist)], hboxBds[3],
+         hseq[2:(length(rowDist) + 1)], xpd = NA,
+         hboxBds[3] + 0.9*diff(hboxBds[3:4])*(rowDist/max(rowDist)),
+         col = adjustcolor("firebrick", 0.5))
+}
+
 ## CONSTANTS #########################################################
 ## necessary number of trials for a given standard error
 ster <- 0.005
@@ -64,7 +108,7 @@ chiPowers <- readRDS("chiPowersMap.Rds")
 powdf <- cbind(chiPowers$pars, power = chiPowers$chi)
 
 ## clean up
-powdf$logD <- round(chiPowdf$logD, 2)
+powdf$logD <- round(powdf$logD, 2)
 powRegD <- powdf[powdf$logD %in% as.character(seq(-5, 5, by = 0.25)),]
 
 ## split by logw and compute each case separately
@@ -105,22 +149,55 @@ pow_maxMats <- mapply(function(ks, mat) {
     ks, pow_maxMax)
 
 ## mask the "uninteresting cases"
-pow_minMask <- mapply(function(x, y, tol) {x[y > tol] <- NA; x},
-                      pow_minMats, pow_gaps, 8)
-pow_maxMask <- mapply(function(x, y, tol) {x[y > tol] <- NA; x},
-                      pow_maxMats, pow_gaps, 8)
+tol <- 8
+masker <- function(x, y, tol = 8) {
+    x[y > tol] <- 0
+    x[is.na(x)] <- 0
+    x
+}
+## apply to data
+pow_minMask <- mapply(masker, x = pow_minMats, y = pow_gaps,
+                      tol = tol)
+pow_maxMask <- mapply(masker, x = pow_maxMats, y = pow_gaps,
+                      tol = tol)
+
+## aggregate a total mask: cases where it is never interesting
+accum <- function(m1, m2) {
+    m1[rownames(m2), colnames(m2)] <- m1[rownames(m2), colnames(m2)] + m2
+    m1
+}
+maskMat <- Reduce(accum, lapply(pow_gaps,
+                                function(mat) {
+                                    mat[is.na(mat)] <- tol + 1
+                                    mat <= tol
+                                }))
+maskMat <- maskMat > 0
 
 ## take a kappa
-kap <- 3
+kap <- -7
 ## see where it fits
-kapMax <- mapply(function(m1, m2, k) m1 <= k & m2 >= k,
+kapMax <- mapply(function(m1, m2, k) m1 <= k & m2 > k,
                  pow_minMask, pow_maxMask, kap)
-kapMax[gapSize > 15] <- NA
-#kapMax[powMin > 0.9 | powMax < 0.1] <- NA
-image(kapMax[[1]])
+## reduce to a single matrix
+kapMaxDist <- Reduce(accum, kapMax,
+                     init = matrix(0, nrow = nrow(kapMax[[1]]),
+                                   ncol = ncol(kapMax[[1]]),
+                                   dimnames = dimnames(kapMax[[1]])))
+kapMaxMask <- kapMaxDist
+kapMaxMask[!maskMat] <- NA
+## plot it
+png(paste0("regionPlot", kap, ".png"), width = 3.5, height = 3.5,
+    units = "in", res = 240)
+par(mar = c(2.1, 2.1, 2.8, 1.5))
+alternativeHeatMap(kapMaxMask, main = "")
+mtext(bquote("Alternatives for log("~kappa~")"==.(kap)),
+      line = 1.5, cex = 0.8)
+abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.25),
+       col = adjustcolor("grey50", 0.5), lty = 2)
+dev.off()
 
 ## plot the heatmaps of these
-ind <- 7
+ind <- 1
 par(mar = c(2.1, 2.1, 1.1, 3.1), mfrow = c(1,2))
 powerHeatMap(pow_minMask[[ind]],
              main = expression(paste("Smallest ", kappa,
@@ -141,13 +218,3 @@ powerHeatMap(pow_rng[[ind]],
 ## in support of that:
 ## - prove that increasing M only increases the resolution of the plot
 ## - increase the resolution and see what it looks like
-
-## filled contours instead?
-filled.contour(minMat[logDNames,],
-               color.palette = function(n) hcl.colors(n))
-contour(minMat[logDNames,], xaxs = "i", yaxs = "i")
-.filled.contour(x = seq(0,1, length.out = 41),
-                y = seq(0,1, length.out = 41),
-                z = mapMat[logDNames,],
-                levels = seq(-8,8,by = 1), col = mapPal)
-contour(mapMat[logDNames,], add = TRUE, col = "gray90")
