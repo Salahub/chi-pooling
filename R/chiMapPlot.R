@@ -163,7 +163,8 @@ pow_maxMask <- mapply(masker, x = pow_maxMats, y = pow_gaps,
 
 ## aggregate a total mask: cases where it is never interesting
 accum <- function(m1, m2) {
-    m1[rownames(m2), colnames(m2)] <- m1[rownames(m2), colnames(m2)] + m2
+    m1[rownames(m2), colnames(m2)] <- m1[rownames(m2),
+                                         colnames(m2)] + m2
     m1
 }
 maskMat <- Reduce(accum, lapply(pow_gaps,
@@ -174,7 +175,7 @@ maskMat <- Reduce(accum, lapply(pow_gaps,
 maskMat <- maskMat > 0
 
 ## take a kappa
-kap <- -7
+kap <- 7
 ## see where it fits
 kapMax <- mapply(function(m1, m2, k) m1 <= k & m2 > k,
                  pow_minMask, pow_maxMask, kap)
@@ -190,7 +191,7 @@ png(paste0("regionPlot", kap, ".png"), width = 3.5, height = 3.5,
     units = "in", res = 240)
 par(mar = c(2.1, 2.1, 2.8, 1.5))
 alternativeHeatMap(kapMaxMask, main = "")
-mtext(bquote("Alternatives for log("~kappa~")"==.(kap)),
+mtext(bquote("Alternatives for log"*kappa==.(kap)),
       line = 1.5, cex = 0.8)
 abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.25),
        col = adjustcolor("grey50", 0.5), lty = 2)
@@ -218,3 +219,6 @@ powerHeatMap(pow_rng[[ind]],
 ## in support of that:
 ## - prove that increasing M only increases the resolution of the plot
 ## - increase the resolution and see what it looks like
+
+## report tests most contributing: max proportion*M largest statistics
+## for the minimum kappa
