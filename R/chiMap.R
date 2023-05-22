@@ -7,7 +7,7 @@ nsim <- (0.5/ster)^2
 
 ## given a w seq, the corresponding a values to span D(a,w)
 wDsets <- expand.grid(w = exp(seq(-6, 0, by = 1)), # w values
-                      logD = seq(-5, 5, by = 0.25)) # target logDivs
+                      logD = seq(-5, 5, by = 0.125)) # target logDivs
 aseq <- apply(wDsets, 1, # find a values given w, logDiv
               function(row) findA(row[1], row[2],
                                   tol = .Machine$double.eps))
@@ -15,8 +15,8 @@ logD <- log(betaDiv(aseq, wDsets[,1])) # compute actual logDiv
 
 ## a sequence of M values, k values, a and w values to parameterize
 ## data generation
-kseq <- exp(seq(-8, 8, by = 0.5)) # k values for chi
-Mval <- 40 # total number of tests
+kseq <- exp(seq(-8, 8, by = 0.25)) # k values for chi
+Mval <- 80 # total number of tests
 m1seq <- seq(0, Mval, by = 1)
 preparams <- data.frame(a = rep(aseq, times = length(m1seq)),
                         w = rep(wDsets[,"w"], times = length(m1seq)),
@@ -54,4 +54,4 @@ powerschi <- mcmapply(chiSimPower, altLst = altLst, poolLst = poolLst,
 ## store the simulation results
 chiPowers <- list(pars = params,
                   chi = unlist(powerschi))
-saveRDS(chiPowers, "chiPowersMap.Rds")
+saveRDS(chiPowers, "chiPowersMap80.Rds")
