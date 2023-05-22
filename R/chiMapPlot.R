@@ -64,7 +64,7 @@ alternativeHeatMap <- function(mat, main = "", pal = NULL) {
           ylab = "", xlab = "", main = "")
     mtext(main, side = 3, line = 0, cex = 0.8) # main
     mtext(expression(rho), side = 2, line = 1, cex = 0.8) # ylab
-    mtext("logD(a,w)", side = 1, line = 1, padj = 0, cex = 0.8) # xlab
+    mtext("lnD(a,w)", side = 1, line = 1, padj = 0, cex = 0.8) # xlab
     ## add ticks
     mtext(side = 1, at = seq(0, 1, by = 0.25), text = "|", line = 0,
           cex = 0.5, padj = -2)
@@ -103,13 +103,14 @@ ster <- 0.005
 nsim <- (0.5/ster)^2
 
 ## read in this result
-chiPowers <- readRDS("chiPowersMap.Rds")
+chiPowers <- readRDS("chiPowersMap80.Rds")
 ## make into single data frame
 powdf <- cbind(chiPowers$pars, power = chiPowers$chi)
 
 ## clean up
-powdf$logD <- round(powdf$logD, 2)
-powRegD <- powdf[powdf$logD %in% as.character(seq(-5, 5, by = 0.25)),]
+powdf$logD <- round(powdf$logD, 3)
+powRegD <- powdf[powdf$logD %in% as.character(seq(-5, 5,
+                                                  by = 0.125)),]
 
 ## split by logw and compute each case separately
 pow_byW <- split(powRegD[, c("m1", "logD", "k", "power")],
@@ -118,7 +119,7 @@ pow_byW <- split(powRegD[, c("m1", "logD", "k", "power")],
 pow_byW <- lapply(pow_byW,
                   function(df) {
                       tapply(df$power,
-                             list(logD = round(df$logD, 2),
+                             list(logD = round(df$logD, 3),
                                   m1 = df$m1,
                                   logk = log(df$k)),
                              mean) # identity, one value
@@ -149,7 +150,7 @@ pow_maxMats <- mapply(function(ks, mat) {
     ks, pow_maxMax)
 
 ## mask the "uninteresting cases"
-tol <- 8
+tol <- 16
 masker <- function(x, y, tol = 8) {
     x[y > tol] <- 0
     x[is.na(x)] <- 0
@@ -175,9 +176,9 @@ maskMat <- Reduce(accum, lapply(pow_gaps,
 maskMat <- maskMat > 0
 
 ## take a kappa
-kap <- 7
+kap <- 8
 ## see where it fits
-kapMax <- mapply(function(m1, m2, k) m1 <= k & m2 > k,
+kapMax <- mapply(function(m1, m2, k) m1 <= k & m2 >= k,
                  pow_minMask, pow_maxMask, kap)
 ## reduce to a single matrix
 kapMaxDist <- Reduce(accum, kapMax,
@@ -191,7 +192,7 @@ png(paste0("regionPlot", kap, ".png"), width = 3.5, height = 3.5,
     units = "in", res = 240)
 par(mar = c(2.1, 2.1, 2.8, 1.5))
 alternativeHeatMap(kapMaxMask, main = "")
-mtext(bquote("Alternatives for log"*kappa==.(kap)),
+mtext(bquote("Alternatives for ln"*kappa==.(kap)),
       line = 1.5, cex = 0.8)
 abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.25),
        col = adjustcolor("grey50", 0.5), lty = 2)
