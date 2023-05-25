@@ -6,7 +6,10 @@ ster <- 0.005
 nsim <- (0.5/ster)^2
 
 ## given a w seq, the corresponding a values to span D(a,w)
-wDsets <- expand.grid(w = exp(seq(-6, 0, by = 1)), # w values
+logscaleW <- FALSE
+if (logscaleW) exp(seq(-6, 0, by = 0.5)) else seq(1/12, 1,
+                                                  length.out = 12)
+wDsets <- expand.grid(w = exp(seq(-6, 0, by = 0.5)), # w values
                       logD = seq(-5, 5, by = 0.125)) # target logDivs
 aseq <- apply(wDsets, 1, # find a values given w, logDiv
               function(row) findA(row[1], row[2],
@@ -41,7 +44,7 @@ chiSimPower <- function(altLst, poolLst, nsim, seeds, M) {
 
 ## get the map for the chi method (requires parallel computing)
 library(parallel)
-ncores <- detectCores()/2
+ncores <- ceiling(detectCores()*0.75)
 spltInds <- rep(1:ncores, # indices for splitting functions
                 each = ceiling(nrow(params)/ncores))[1:nrow(params)]
 sdLst <- split(seeds, spltInds) # split seeds
@@ -54,4 +57,4 @@ powerschi <- mcmapply(chiSimPower, altLst = altLst, poolLst = poolLst,
 ## store the simulation results
 chiPowers <- list(pars = params,
                   chi = unlist(powerschi))
-saveRDS(chiPowers, "chiPowersMap80.Rds")
+saveRDS(chiPowers, "chiPowersMap80_unifW.Rds")
