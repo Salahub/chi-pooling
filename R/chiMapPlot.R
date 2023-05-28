@@ -176,10 +176,12 @@ maskMat <- Reduce(accum, lapply(pow_gaps,
 maskMat <- maskMat > 0
 
 ## take a kappa
-kap <- 8
+kap <- c(log(2),log(2))
 ## see where it fits
-kapMax <- mapply(function(m1, m2, k) m1 <= k & m2 >= k,
-                 pow_minMask, pow_maxMask, kap)
+kapMax <- mapply(function(m1, m2, k) m1 >= k[1] & m1 < k[2] |
+                                     m2 > k[1] & m2 <= k[2] |
+                                     m1 <= k[1] & m2 >= k[2],
+                 pow_minMask, pow_maxMask, list(kap))
 ## reduce to a single matrix
 kapMaxDist <- Reduce(accum, kapMax,
                      init = matrix(0, nrow = nrow(kapMax[[1]]),
@@ -188,12 +190,12 @@ kapMaxDist <- Reduce(accum, kapMax,
 kapMaxMask <- kapMaxDist
 kapMaxMask[!maskMat] <- NA
 ## plot it
-png(paste0("regionPlot", kap, ".png"), width = 3.5, height = 3.5,
+png(paste0("regionPlot", kap, ".png"), width = 3, height = 3,
     units = "in", res = 240)
-par(mar = c(2.1, 2.1, 2.8, 1.5))
+par(mar = c(2.1, 2.1, 1.5, 1.5))
 alternativeHeatMap(kapMaxMask, main = "")
-mtext(bquote("Alternatives for ln"*kappa==.(kap)),
-      line = 1.5, cex = 0.8)
+#mtext(bquote("Alternatives for ln"*kappa==.(kap)),
+#      line = 1.5, cex = 0.8)
 abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.25),
        col = adjustcolor("grey50", 0.5), lty = 2)
 dev.off()

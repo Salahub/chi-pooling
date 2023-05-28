@@ -139,7 +139,7 @@ narrowPlot(ygrid = seq(0.2, 1, by = 0.2), xlab = "ln(D(a, w))",
            xgrid = seq(-5, 5, length.out = 5), ylab = "Power",
            ylim = c(0.05, 1.02), xlim = c(-5, 5),
            mars = c(2.1, 2.1, 1.1, 3.1),
-           main = expression(paste("Power of HR(", bold(p), ", w)",
+           main = expression(paste("Power of HR(", bold(p), "; w)",
                                    " by D(a, w) and M")))
 for (ii in seq_along(M2inds)) { # lines connecting M = 2 to M = 20
     if (params$w[ii] %in% exp(c(-6, 0))) {
@@ -173,7 +173,7 @@ png("klDivPowByw.png", width = 2.6, height = 2.6, units = "in", res = 400)
 narrowPlot(ygrid = seq(0.2, 1, by = 0.2), xlab = "ln(D(a, w))",
            xgrid = seq(-5, 5, length.out = 5), ylab = "Power",
            ylim = c(0.05, 1), xlim = c(-5, 5),
-           main = expression(paste("HR(", bold(p), ", w)",
+           main = expression(paste("HR(", bold(p), "; w)",
                                    " power curves by D(a,w)")))
 for (w in unique(params$w)) { # curve for each w
     inds <- abs(params$w - w) < .Machine$double.eps &
@@ -193,8 +193,8 @@ narrowPlot(ygrid = seq(0.2, 1, by = 0.2),
            xgrid = seq(-5, 5, length.out = 5), ylab = "Power",
            ylim = c(0.05, 1), xlim = c(-5, 5),
            mars = c(2.1, 2.1, 1.1, 4.1),
-           main = expression(paste("Power of ", g[w], " by D(a, ",
-                                   omega, ")")))
+           main = expression(paste("Power of HR(", bold(p), "; w)",
+                                   " by D(a, ", omega, ")")))
 for (w in exp(c(-6, 0))) { # subset of w cases
     inds <- abs(params$w - w) < .Machine$double.eps &
         params$M == 2 # select from design mat
@@ -555,21 +555,21 @@ myTheme$plot.title$hjust <- 0.5 # centre title
 ## method
 inds <- log(params$w) %in% c(-6, -3, 0) & -5 <= log(klDivs) &
     5 >= log(klDivs)
-powerContourBase <- ggplot(data = data.frame(ump = powershr,
+powerContourBase <- ggplot(data = data.frame(fis = powersmis[,4],
                                       lnkl = log(klDivs),
                                       rho = params$m1/10,
                                       a = params$a,
                                       w = params$w)[inds,], # temporary df
-                           aes(lnkl, rho, z = ump)) # base ggplot
-png("umpPower.png", width = 6, height = 2.5, units = "in", res = 400)
+                           aes(lnkl, rho, z = fis)) # base ggplot
+png("fisPower.png", width = 6, height = 2.5, units = "in", res = 400)
 powGrob <- ggplotGrob(powerContourBase + # save as a grid grob
                       xlab(expression(paste("ln(D(a, ", "w", "))"))) +
                       ylab(expression(rho)) +
-                      ggtitle(expression(paste("Power of ", g[w],
-                                               " by ln(D(a,", "w",
+                      ggtitle(expression(paste("Power of HR(", bold(p),
+                                               "; 1) by ln(D(a,", omega,
                                                ")) and ", rho,
                                                " facetted by ln(",
-                                               "w", ")"))) +
+                                               omega, ")"))) +
                       geom_contour_filled(breaks = powBreaks) +
                       facet_wrap(~log(w)) + # facet by w
                       scale_fill_manual(values = powPal(nbr+1),
