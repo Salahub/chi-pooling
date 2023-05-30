@@ -7,9 +7,10 @@ nsim <- (0.5/ster)^2
 
 ## given a w seq, the corresponding a values to span D(a,w)
 logscaleW <- FALSE
-if (logscaleW) exp(seq(-6, 0, by = 0.5)) else seq(1/12, 1,
-                                                  length.out = 12)
-wDsets <- expand.grid(w = exp(seq(-6, 0, by = 0.5)), # w values
+if (logscaleW) {
+    w <- exp(seq(-6, 0, by = 0.5))
+} else {w <- seq(1/12, 1, length.out = 12) }
+wDsets <- expand.grid(w = w, # w values
                       logD = seq(-5, 5, by = 0.125)) # target logDivs
 aseq <- apply(wDsets, 1, # find a values given w, logDiv
               function(row) findA(row[1], row[2],
@@ -44,15 +45,16 @@ chiSimPower <- function(altLst, poolLst, nsim, seeds, M) {
 
 ## get the map for the chi method (requires parallel computing)
 library(parallel)
-ncores <- ceiling(detectCores()*0.75)
+ncores <- ceiling(detectCores()*0.9)
 spltInds <- rep(1:ncores, # indices for splitting functions
                 each = ceiling(nrow(params)/ncores))[1:nrow(params)]
+ncores <- spltInds[length(spltInds)] # fix number of cores
 sdLst <- split(seeds, spltInds) # split seeds
 altLst <- split(altSeq, spltInds)
 poolLst <- split(poolSeq, spltInds) # functions separated by indices
 powerschi <- mcmapply(chiSimPower, altLst = altLst, poolLst = poolLst,
                       nsim = nsim, seeds = sdLst, M = Mval,
-                      mc.cores = ncores)
+                      mc.cores = ncores, mc.preschedule = FALSE)
 
 ## store the simulation results
 chiPowers <- list(pars = params,
