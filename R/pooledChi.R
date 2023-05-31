@@ -139,7 +139,7 @@ narrowPlot(ygrid = seq(0.2, 1, by = 0.2), xlab = "ln(D(a, w))",
            xgrid = seq(-5, 5, length.out = 5), ylab = "Power",
            ylim = c(0.05, 1.02), xlim = c(-5, 5),
            mars = c(2.1, 2.1, 1.1, 3.1),
-           main = expression(paste("Power of HR(", bold(p), ", w)",
+           main = expression(paste("Power of HR(", bold(p), "; w)",
                                    " by D(a, w) and M")))
 for (ii in seq_along(M2inds)) { # lines connecting M = 2 to M = 20
     if (params$w[ii] %in% exp(c(-6, 0))) {
@@ -173,7 +173,7 @@ png("klDivPowByw.png", width = 2.6, height = 2.6, units = "in", res = 400)
 narrowPlot(ygrid = seq(0.2, 1, by = 0.2), xlab = "ln(D(a, w))",
            xgrid = seq(-5, 5, length.out = 5), ylab = "Power",
            ylim = c(0.05, 1), xlim = c(-5, 5),
-           main = expression(paste("HR(", bold(p), ", w)",
+           main = expression(paste("HR(", bold(p), "; w)",
                                    " power curves by D(a,w)")))
 for (w in unique(params$w)) { # curve for each w
     inds <- abs(params$w - w) < .Machine$double.eps &
@@ -193,8 +193,8 @@ narrowPlot(ygrid = seq(0.2, 1, by = 0.2),
            xgrid = seq(-5, 5, length.out = 5), ylab = "Power",
            ylim = c(0.05, 1), xlim = c(-5, 5),
            mars = c(2.1, 2.1, 1.1, 4.1),
-           main = expression(paste("Power of ", g[w], " by D(a, ",
-                                   omega, ")")))
+           main = expression(paste("Power of HR(", bold(p), "; w)",
+                                   " by D(a, ", omega, ")")))
 for (w in exp(c(-6, 0))) { # subset of w cases
     inds <- abs(params$w - w) < .Machine$double.eps &
         params$M == 2 # select from design mat
@@ -223,8 +223,8 @@ narrowPlot(ygrid = seq(0.2, 1, by = 0.2),
            xgrid = seq(-5, 5, length.out = 5), ylab = "Power",
            ylim = c(0.05, 1), xlim = c(-5, 5),
            mars = c(2.1, 2.1, 1.1, 4.1),
-           main = expression(paste("Power of ", g[chi],
-                                   " and ", g[w],
+           main = expression(paste("Power of chi(;2981)",
+                                   " and HR(;w)",
                                    " by D(a,", omega, ")")))
 for (w in exp(c(-6, 0))) {
     inds <- abs(params$w - w) < .Machine$double.eps &
@@ -555,21 +555,21 @@ myTheme$plot.title$hjust <- 0.5 # centre title
 ## method
 inds <- log(params$w) %in% c(-6, -3, 0) & -5 <= log(klDivs) &
     5 >= log(klDivs)
-powerContourBase <- ggplot(data = data.frame(ump = powershr,
+powerContourBase <- ggplot(data = data.frame(fis = powersmis[,4],
                                       lnkl = log(klDivs),
                                       rho = params$m1/10,
                                       a = params$a,
                                       w = params$w)[inds,], # temporary df
-                           aes(lnkl, rho, z = ump)) # base ggplot
-png("umpPower.png", width = 6, height = 2.5, units = "in", res = 400)
+                           aes(lnkl, rho, z = fis)) # base ggplot
+png("fisPower.png", width = 6, height = 2.5, units = "in", res = 400)
 powGrob <- ggplotGrob(powerContourBase + # save as a grid grob
                       xlab(expression(paste("ln(D(a, ", "w", "))"))) +
                       ylab(expression(rho)) +
-                      ggtitle(expression(paste("Power of ", g[w],
-                                               " by ln(D(a,", "w",
+                      ggtitle(expression(paste("Power of HR(", bold(p),
+                                               "; 1) by ln(D(a,", omega,
                                                ")) and ", rho,
                                                " facetted by ln(",
-                                               "w", ")"))) +
+                                               omega, ")"))) +
                       geom_contour_filled(breaks = powBreaks) +
                       facet_wrap(~log(w)) + # facet by w
                       scale_fill_manual(values = powPal(nbr+1),
@@ -611,16 +611,17 @@ fisMin <- apply(cbind(ump = powershr, chi = powerschi,
                 function(col) powersmis[,4] - col) # all in one matrix
 colnames(fisMin) <- c("ump", paste0("chi", round(log(kseq), 1)),
                       paste0("mis", round(log(misSpec[1:3]), 1)))
-difTitles <- c("ump" = quote(g[omega]), # nice names for plotting
-               "minchi" = quote(paste(g[chi], " (", kappa, " = 0.0003)")),
-               "smchi" = quote(paste(g[chi], " (", kappa, " = 0.018)")),
-               "cvchi" = quote(paste(g[chi], " (", kappa, " = 1)")),
-               "fischi" = quote(paste(g[chi], " (", kappa, " = 2)")),
-               "modchi" = quote(paste(g[chi], " (", kappa, " = 55)")),
-               "bigchi" = quote(paste(g[chi], " (", kappa, " = 2981)")),
-               "le-6" = quote(g[0.002]),
-               "le-3" = quote(g[0.05]),
-               "l05" = quote(g[0.5]))
+## nice names for plotting
+difTitles <- c("ump" = quote(paste("HR(", bold(p), ";", omega, ")")),
+               "minchi" = quote(paste("chi", "(", bold(p), "; 0.003)")),
+               "smchi" = quote(paste("chi", "(", bold(p), "; 0.018)")),
+               "cvchi" = quote(paste("chi", "(", bold(p), "; 1)")),
+               "fischi" = quote(paste("chi", "(", bold(p), "; 2)")),
+               "modchi" = quote(paste("chi", "(", bold(p), "; 55)")),
+               "bigchi" = quote(paste("chi", "(", bold(p), "; 2981)")),
+               "le-6" = quote(paste("HR(", bold(p), "; 0.002)")),
+               "le-3" = quote(paste("HR(", bold(p), "; 0.05)")),
+               "l05" = quote(paste("HR(", bold(p), "; 0.5)")))
 
 ## IMAGE :: facetting power difference contours by w
 inds <- log(params$w) %in% c(-6, -3, 0) & -5 <= log(klDivs) &
@@ -637,7 +638,8 @@ for (ii in seq_len(ncol(fisMin))) {
         diffContourBase +
         xlab(expression(paste("ln(D(a, ", omega, "))"))) +
         ylab(expression(rho)) +
-        ggtitle(bquote(paste("Power of ", g[1], " minus power of ",
+        ggtitle(bquote(paste("Power of HR(", bold(p), ";1)",
+                             " minus power of ",
                        .(difTitles[[ii]])))) + # dynamic title
         geom_contour_filled(breaks = difBreaks) +
         facet_wrap(~log(w)) + # facet by w
@@ -1000,17 +1002,18 @@ a <- 0.05 # alpha value
 k <- exp(seq(-16, 16, by = 0.2)) # k on log scale
 png("cgChiPool.png", width = 4, height = 4, units = "in",
     res = 400)
-narrowPlot(xgrid = seq(-15, 15, by = 5), ygrid = seq(0, 1, by = 0.2),
-           main = expression(paste("c(",g[chi],") by M and ln(",
-                                   kappa, ")")),
-           xlim = c(-16, 16),
-           xlab = expression(paste("ln(", kappa, ")")),
+narrowPlot(xgrid = seq(-6, 6, by = 3),
+           ygrid = seq(0, 1, by = 0.2),
+           main = expression(paste("q(chi(;", kappa, ")) by M and ",
+                                   log[10], "(", kappa, ")")),
+           xlim = c(-7, 7),
+           xlab = expression(paste(log[10], "(", kappa, ")")),
            ylab = "Centrality quotient")
 for (m in Mseq) {
     tempQuot <- centQuot(k, M = m, alpha = a)
-    lines(log(k), tempQuot, #lwd = templwd,
+    lines(log10(k), tempQuot, #lwd = templwd,
           col = adjustcolor(chiCol, 1))
-    text(log(k)[which.min(abs(tempQuot - 0.5))] - 0.6,
+    text(log10(k)[which.min(abs(tempQuot - 0.5))] - 0.3,
          y = 0.5, labels = m, srt = 80, cex = 0.7)
 }
 dev.off()
@@ -1018,7 +1021,7 @@ dev.off()
 ## TABLE :: the choice of kappa to given a particular centrality
 ## quotient given a particular M
 centSeq <- seq(0.1, 0.9, by = 0.1)
-centTab <- log(sapply(Mseq,
+centTab <- log10(sapply(Mseq,
                       function(m) sapply(centSeq, chiKappa,
                                          M = m,
                                          interval = c(0, 1e4),
@@ -1098,7 +1101,7 @@ normPs <- apply(randDat, 1, poolNorm)
 kind <- 30
 chikPs <- kcurves[kind,] # select k
 ## plot in one display
-png(paste0("chiTipSto", kind, ".png"), width = 2.5, height = 2.5,
+png(paste0("chiTipSto", kind, ".png"), width = 4, height = 2,
     units = "in", res = 400)
 par(mar = c(2.1, 2.1, 1.1, 1.1))
 plot(c(0.48*tipPs, 0.48*normPs + 0.52), c(chikPs, chikPs),
@@ -1106,7 +1109,7 @@ plot(c(0.48*tipPs, 0.48*normPs + 0.52), c(chikPs, chikPs),
      ylim = c(-0.02, 1.02), xaxt = 'n', xlab = "", yaxt = 'n',
      ylab = "", main = "", pch = 20,
      col = adjustcolor(chiCol, 0.4))
-mtext(expression(paste(g[chi], "(", bold(p)[i], ")")),
+mtext(expression(paste("chi(", bold(p)[i], ";", kappa, ")")),
       side = 2, line = 1, cex = 0.8)
 tempk <- round(kseq[kind], 4)
 mtext(bquote(paste(kappa, " = ", .(tempk))), side = 3, line = 0,
@@ -1119,20 +1122,20 @@ abline(h = seq(0, 1, by = 0.25), col = adjustcolor("gray", 0.4),
 ## custom y axis
 mtext(side = 2, at = seq(0, 1, length.out = 5),
       text = "|", line = 0, cex = 0.5, padj = 1)
-mtext(text = seq(0, 1, length.out = 5), side = 2, cex = 0.8,
-      at = seq(0, 1, length.out = 5), padj = -0.5)
+mtext(text = seq(0, 1, length.out = 3), side = 2, cex = 0.8,
+      at = seq(0, 1, length.out = 3), padj = -0.5)
 ## custom x axes
 mtext(side = 1, at = seq(0, 0.48, length.out = 5),
       text = "|", line = 0, cex = 0.5, padj = -2)
 mtext(text = seq(0, 1, length.out = 3), side = 1, cex = 0.8,
       at = seq(0, 0.48, length.out = 3))
-mtext(text = expression(g[Tip](bold(p)[i])), at = 0.25, side = 1,
+mtext(text = expression(Tip(bold(p)[i])), at = 0.25, side = 1,
       line = 1, padj = 0, cex = 0.8)
 mtext(side = 1, at = seq(0.52, 1, length.out = 5),
       text = "|", line = 0, cex = 0.5, padj = -2)
 mtext(text = seq(0, 1, length.out = 3), side = 1, cex = 0.8,
       at = seq(0.52, 1, length.out = 3))
-mtext(text = expression(g[Sto](bold(p)[i])), at = 0.75, side = 1,
+mtext(text = expression(Sto(bold(p)[i])), at = 0.75, side = 1,
       line = 1, padj = 0, cex = 0.8)
 dev.off()
 

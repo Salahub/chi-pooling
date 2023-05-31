@@ -115,16 +115,16 @@ nullQuants <- readRDS("curveMinQuantiles.Rds")
 ## call based on a, b, simulation settings
 nsim <- 1e3
 n <- 1e2
-a <- 0.5
-b <- 1
+a <- 2; anm <- gsub("\\.", "_", as.character(a))
+b <- 4; bnm <- gsub("\\.", "_", as.character(b))
 kseq <- exp(seq(-8, 8, by = 0.25))
 sims <- simBetaPath(a = a, b = b, n = n, nsim = nsim,
                     kseq = kseq)
 
 ## plot these results
 xpos <- seq(0, 1, 0.005)
-png(paste0("beta", a, b, "dens.png"), width = 2.5, height = 2.5,
-    units = "in", res = 240)
+png(paste0("beta", anm, bnm, "dens.png"), width = 2.5, height = 2.5,
+    units = "in", res = 480)
 ## the density
 narrowPlot(xgrid = seq(0, 1, by = 0.2), ygrid = seq(0, 5, by = 1),
            main = paste0("Beta(", a, ", ", "", b, ")"),
@@ -132,22 +132,24 @@ narrowPlot(xgrid = seq(0, 1, by = 0.2), ygrid = seq(0, 5, by = 1),
 lines(xpos, dbeta(xpos, a, b))
 dev.off()
 
-png(paste0("beta", a, b, "quants.png"), width = 2.5, height = 2.5,
-    units = "in", res = 240)
+png(paste0("beta", anm, bnm, "quants.png"), width = 2.5, height = 2.5,
+    units = "in", res = 480)
 ## the central quantiles
 narrowPlot(xgrid = seq(-3, 3, by = 1), ygrid = seq(-15, 0, by = 3),
            xlim = c(-3.5, 3.5),
-           main = "Pooled p-value central quantiles",
+           main = expression(paste("chi(", bold(p), ";", kappa,
+                                   ") central quantiles")),
            xlab = expression(paste(log[10], "(", kappa, ")")),
-           ylab = expression(paste(log[10], "(p)")))
+           ylab = expression(paste(log[10], "(chi(", bold(p), ";",
+                                   kappa, "))")))
 addQuantPoly(paths = sims, cex = 0.6, labpos = c("right", "bottom"),
              kseq = kseq)
 quantLevs <- c("5%", "1%", "0.1%")
 abline(h = log(nullQuants[quantLevs, as.character(n)], 10),
        lty = 2, col = "firebrick")
-text(x = rep(-3.2, 3), labels = quantLevs, cex = 0.6,
+text(x = rep(3.95, 3), labels = quantLevs, cex = 0.6, xpd = NA,
      y = log(nullQuants[quantLevs, as.character(n)], 10),
-     adj = c(0.5, -0.2))
+     adj = c(0.2, 0.5))
 dev.off()
 
 ## MIXTURE ###########################################################
@@ -158,41 +160,46 @@ dev.off()
 ## now try a mixture
 nsim <- 1e3
 n <- 1e2
-p <- 0.05
+p <- 0.05; pnm <- gsub("\\.", "_", as.character(p))
 b1 <- list(a = 0.1, b = 1)
+b1nm <- lapply(b1, function(x) gsub("\\.", "_", as.character(x)))
 b2 <- list(a = 1, b = 1)
+b2nm <- lapply(b2, function(x) gsub("\\.", "_", as.character(x)))
 kseq <- exp(seq(-8, 8, by = 0.25))
 mixsims <- simBetaMix(p = p, b1 = b1, b2 = b2, n = n,
                       nsim = nsim, kseq = kseq)
 
 ## plot these results
 xpos <- seq(0, 1, 0.005)
-png(paste0("betamix", b1$a, b1$b,"-", b2$a, b2$b, p, "dens.png"),
+png(paste0("betamix", b1nm$a, b1nm$b,"-", b2nm$a, b2nm$b, pnm,
+           "dens.png"),
     width = 2.5, height = 2.5, units = "in", res = 240)
 ## the density
 narrowPlot(xgrid = seq(0, 1, by = 0.2), ygrid = seq(0, 5, by = 1),
-           main = paste0("Beta(", b1$a, ", ", b1$b, ") and (",
-                         b2$a, ", ", b2$b, ") mix (", p, "/", 1-p,
-                         ")"),
+           main = paste0(p, "Beta(", b1$a, ", ", b1$b, ") + ",
+                         1-p, "Beta(", b2$a, ", ", b2$b, ")"),
            xlab = "x", ylab = "Density")
 lines(xpos, p*dbeta(xpos, b1$a, b1$b) + (1-p)*dbeta(xpos, b2$a, b2$b))
 dev.off()
 
-png(paste0("betamix", b1$a, b1$b,"-", b2$a, b2$b, p, "quants.png"),
+png(paste0("betamix", b1nm$a, b1nm$b,"-", b2nm$a, b2nm$b, pnm,
+           "quants.png"),
     width = 2.5, height = 2.5, units = "in", res = 240)
 ## the central quantiles
 narrowPlot(xgrid = seq(-3, 3, by = 1), ygrid = seq(-15, 0, by = 3),
            xlim = c(-3.5, 3.5),
-           main = "Pooled p-value central quantiles",
+           main = expression(paste("chi(", bold(p), ";", kappa,
+                                   ") central quantiles")),
            xlab = expression(paste(log[10], "(", kappa, ")")),
-           ylab = expression(paste(log[10], "(p)")))
+           ylab = expression(paste(log[10], "(chi(", bold(p), ";",
+                                   kappa, "))")))
 addQuantPoly(paths = mixsims, cex = 0.6, labpos = c("right", "bottom"))
 quantLevs <- c("5%", "1%", "0.1%")
 abline(h = log(nullQuants[quantLevs, as.character(n)], 10),
        lty = 2, col = "firebrick")
-text(x = rep(-3.2, 3), labels = quantLevs, cex = 0.6,
+text(x = rep(3.95, 3), labels = quantLevs, cex = 0.6, xpd = NA,
      y = log(nullQuants[quantLevs, as.character(n)], 10),
-     adj = c(0.5, -0.2))
+     adj = c(0.2, 0.5))
 dev.off()
 
 ## NULL QUANTILES ####################################################
