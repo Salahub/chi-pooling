@@ -45,7 +45,7 @@ chiSimPower <- function(altLst, poolLst, nsim, seeds, M) {
 
 ## get the map for the chi method (requires parallel computing)
 library(parallel)
-ncores <- ceiling(detectCores()*0.9)
+ncores <- ceiling(detectCores()*0.8)
 spltInds <- rep(1:ncores, # indices for splitting functions
                 each = ceiling(nrow(params)/ncores))[1:nrow(params)]
 ncores <- spltInds[length(spltInds)] # fix number of cores
@@ -54,7 +54,8 @@ altLst <- split(altSeq, spltInds)
 poolLst <- split(poolSeq, spltInds) # functions separated by indices
 powerschi <- mcmapply(chiSimPower, altLst = altLst, poolLst = poolLst,
                       nsim = nsim, seeds = sdLst, M = Mval,
-                      mc.cores = ncores, mc.preschedule = FALSE)
+                      mc.cores = ncores, mc.preschedule = FALSE,
+                      affinity.list = 1:ncores)
 
 ## store the simulation results
 chiPowers <- list(pars = params,
