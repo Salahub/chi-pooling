@@ -1,11 +1,17 @@
 source("poolFunctions.R")
 
+## binomial difference function
+binDiff <- function(p, mx, crit = -1.96) {
+    pc <- (p + mx)/2
+    notless <- (p - mx)/sqrt(pc*(1-pc)*2/nsim) > crit
+    notless[is.na(notless)] <- TRUE
+    notless
+}
+
 ## get the max for each, compute z-scores, take the smallest not
 ## significantly different from the max
 leastMax <- function(p) {
-    mx <- max(p)
-    pc <- (p + mx)/2
-    eqmax <- (p - mx)/sqrt(pc*(1-pc)*2/nsim) > -1.96
+    eqmax <-
     eqmax[is.na(eqmax)] <- TRUE # fix 1, 1 case
     first <- which(eqmax)[1]
     if (all(eqmax)) NA else first
@@ -54,14 +60,13 @@ powerHeatMap <- function(mat, main = "",
 }
 
 ## helper to make plotting easier
-alternativeHeatMap <- function(mat, main = "", pal = NULL) {
+alternativeHeatMap <- function(mat, main = "", pal = NULL, ...) {
     if (is.null(pal)) {
         pal <- colorRampPalette(c("white",
-                                  "firebrick"))(max(mat,
-                                                    na.rm = TRUE) + 1)
+                                  "firebrick"))(20)
     }
-    image(mat, xaxt = "n", yaxt = "n", col = pal,
-          ylab = "", xlab = "", main = "")
+    image(mat, xaxt = "n", yaxt = "n", col = pal, ylab = "", xlab = "",
+          main = main, ...)
     mtext(main, side = 3, line = 0, cex = 0.8) # main
     mtext(expression(rho), side = 2, line = 1, cex = 0.8) # ylab
     mtext("lnD(a,w)", side = 1, line = 1, padj = 0, cex = 0.8) # xlab
@@ -97,24 +102,126 @@ alternativeHeatMap <- function(mat, main = "", pal = NULL) {
          col = adjustcolor("firebrick", 0.5))
 }
 
+## convolve with 5x5 gaussian filter
+smoothPower <- function(x, filt = gFilt) {
+    dims <- dimnames(x) # before changing dimensions
+    nullCol <- x[,1]
+    x <- x[, -1] # insert null values later
+    nr <- nrow(x)
+    nc <- ncol(x) # new dimensions
+    xpd <- rbind(x[c(2,1), ], x, x[c(nr, nr-1),])
+    xpd <- cbind(xpd[, c(2,1)], xpd, xpd[, c(nc, nc-1)]) # x padded
+    conv <- matrix(NA, nrow = nr, ncol = nc)
+    for (ii in (1:nr)) {
+        for (jj in (1:nc)) {
+            ix <- ii + 2
+            jx <- jj + 2
+            rinds <- (ix-2):(ix+2)
+            cinds <- (jx-2):(jx+2)
+            conv[ii,jj] <- sum(xpd[rinds, cinds]*filt)
+        }
+    }
+    conv <- cbind(nullCol, conv) # null case
+    dimnames(conv) <- dims
+    conv
+}
+
+## wrapper to apply above to array
+smoothParray <- function(arr) {
+    dims <- dimnames(arr) # keep dimnames for later
+    smth <- simplify2array(
+        lapply(dims[[3]], function(k) smoothPower(arr[,,k])))
+    dimnames(smth) <- dimnames(arr)
+    smth
+}
+
+## mask a matrix of values using a logical matrix
+masker <- function(x, mask) {
+    x[!mask] <- 0
+    x[is.na(x)] <- 0
+    x
+}
+
+## function to aggregate matrices safely
+accumMat <- function(m1, m2) {
+    m1[rownames(m2), colnames(m2)] <- m1[rownames(m2),
+                                         colnames(m2)] + m2
+    m1
+}
+
+## and 3d arrays
+accumArr <- function(a1, a2) {
+    dims2 <- dimnames(a2)
+    a1[dims2[[1]], dims2[[2]], dims2[[3]]] <- a1[dims2[[1]],
+                                                 dims2[[2]],
+                                                 dims2[[3]]] + a2
+    a1
+}
+
+## mask arrays in our setting
+maskArr <- function(arr, mask) {
+    for (kk in seq_len(dim(arr)[[3]])) {
+        tempMat <- arr[,,kk]
+        tempMat[!mask] <- 0
+        arr[,,kk] <- tempMat
+    }
+    arr
+}
+
+## PRELIMINARIES #####################################################
+## define convolutional gaussian filter for smoothing
+library(mvtnorm)
+## set grid
+lowy <- rep(seq(-2.5, 1.5, by = 1), times = 5)
+lowx <- rep(seq(-2.5, 1.5, by = 1), each = 5)
+upy <- rep(seq(-1.5, 2.5, by = 1), times = 5)
+upx <- rep(seq(-1.5, 2.5, by = 1), each = 5)
+## compute integrals over appropriate regions
+gaussFilt <- matrix(sapply(1:length(lowx),
+                           function(ii) pmvnorm(lower = c(lowx[ii],
+                                                          lowy[ii]),
+                                                upper = c(upx[ii],
+                                                          upy[ii]))),
+                    ncol = 5)
+gFilt <- gaussFilt/sum(gaussFilt)
+
+
+## LOADING ###########################################################
+## read in the power data
+##dataFile <- "chiPowersMap80.Rds" (log w)
+dataFile <- "chiPowersMap80_unifW.Rds"
+chiPowers <- readRDS(dataFile)
+## make into single data frame
+powdf <- cbind(chiPowers$pars, power = chiPowers$chi)
+
+
 ## CONSTANTS #########################################################
 ## necessary number of trials for a given standard error
 ster <- 0.005
 nsim <- (0.5/ster)^2
 
-## read in this result
-chiPowers <- readRDS("chiPowersMap80.Rds")
-## make into single data frame
-powdf <- cbind(chiPowers$pars, power = chiPowers$chi)
+## logD and kappa sequences in the data
+logDseq <- seq(-5, 5, by = 0.125)
+kapSeq <- seq(-8, 8, by = 0.25)
+
+## null matrix and array for aggregation (ensure constant plots)
+nullMat <- matrix(0, ncol = 81, nrow = 81,
+                  dimnames = list("logD" = as.character(logDseq),
+                                  "m1" = 0:80))
+nullArr <- array(0, dim = c(81, 81, length(kapSeq)),
+                 dimnames = list("logD" = as.character(logDseq),
+                                 "m1" = 0:80,
+                                 "logk" = as.character(kapSeq)))
 
 ## clean up
 powdf$logD <- round(powdf$logD, 3)
-powRegD <- powdf[powdf$logD %in% as.character(seq(-5, 5,
-                                                  by = 0.125)),]
+powRegD <- powdf[powdf$logD %in% as.character(logDseq),]
 
 ## split by logw and compute each case separately
 pow_byW <- split(powRegD[, c("m1", "logD", "k", "power")],
-                 log(powRegD$w))
+                 if (grepl("unifW", dataFile)) {
+                     powRegD$w
+                 }else log(powRegD$w))
 ## arrange as arrays
 pow_byW <- lapply(pow_byW,
                   function(df) {
@@ -124,76 +231,64 @@ pow_byW <- lapply(pow_byW,
                                   logk = log(df$k)),
                              mean) # identity, one value
                   })
+## smooth the powers
+smth_byW <- lapply(pow_byW, smoothParray)
+## get the max and min powers
+max_byW <- lapply(smth_byW,
+                  function(arr) apply(arr, c(1,2), max))
+min_byW <-  lapply(smth_byW,
+                   function(arr) apply(arr, c(1,2), min))
+## check the max against each value
+sameMax_byW <- mapply(function(smth, mx) sweep(smth, c(1,2),
+                                               mx, binDiff),
+                      smth_byW, max_byW)
 
-## get max and min powers
-pow_max <- lapply(pow_byW,
-                  function(mt) apply(mt, c(1,2), max))
-pow_min <- lapply(pow_byW,
-                  function(mt) apply(mt, c(1,2), min))
-pow_rng <- mapply(`-`, pow_max, pow_min)
-## indices of matches and gap giivng number of max matches
-pow_minMax <- lapply(pow_byW,
-                     function(mt) apply(mt, c(1,2), leastMax))
-pow_maxMax <- lapply(pow_byW,
-                     function(mt) apply(mt, c(1,2), largestMax))
-pow_gaps <- mapply(`-`, pow_maxMax, pow_minMax)
+## reduce this
+sameMax <- Reduce(accumArr, sameMax_byW, init = nullArr)
 
-## convert back to parameter values
-ks <- lapply(pow_byW, function(ar) dimnames(ar)$logk)
-pow_minMats <- mapply(function(ks, mat) {
-    matrix(as.numeric(ks[mat]), nrow = nrow(mat),
-           dimnames = dimnames(mat)) },
-    ks, pow_minMax)
-pow_maxMats <- mapply(function(ks, mat) {
-    matrix(as.numeric(ks[mat]), nrow = nrow(mat),
-           dimnames = dimnames(mat)) },
-    ks, pow_maxMax)
+## two possible masks seem reasonable
+## the range/sd/change in power
+sd_byW <- lapply(pow_byW,
+                 function(arr) apply(arr, c(1,2), sd))
+## the number of matching methods at max power
+match_byW <- lapply(sameMax_byW,
+                    function(arr) apply(arr, c(1,2), sum))
+## get individual w masks based on thresholds
+sdLim <- ster*2
+matchLim <- 20
+sdmask_byW <- lapply(sd_byW, function(mat) mat > sdLim)
+mtmask_byW <- lapply(match_byW, function(mat) mat < matchLim)
+## count cases for all
+caseMat <- Reduce(accumMat, mtmask_byW, init = nullMat)
+maskMat <- Reduce(accumMat, sdmask_byW, init = nullMat) > 0
 
-## mask the "uninteresting cases"
-tol <- 16
-masker <- function(x, y, tol = 8) {
-    x[y > tol] <- 0
-    x[is.na(x)] <- 0
-    x
+## use the masks on the sameMax arrays
+sameMaxMask_byW <- mapply(maskArr, sameMax_byW, mtmask_byW)
+## reduce this
+sameMaxMask <- Reduce(accumArr, sameMaxMask_byW, nullArr)
+## scale this
+maxProp <- sweep(sameMaxMask, c(1,2), caseMat, `/`)
+
+## select indices by kappa
+kaps <- c(-1,1)
+kapInd <- kapSeq <= kaps[2] & kapSeq >= kaps[1]
+if (!any(kapInd)) {
+    kapInd <- logical(length(kapSeq))
+    kapInd[which.min(abs(kapSeq - mean(kaps)))] <- TRUE
 }
-## apply to data
-pow_minMask <- mapply(masker, x = pow_minMats, y = pow_gaps,
-                      tol = tol)
-pow_maxMask <- mapply(masker, x = pow_maxMats, y = pow_gaps,
-                      tol = tol)
+## aggregate indices and standardize
+kapMat <- apply(sameMaxMask[,,kapInd], c(1,2), sum)#/sum(kapInd)
+## mask this match
+kapMask <- kapMat; kapMask[!maskMat] <- NA
 
-## aggregate a total mask: cases where it is never interesting
-accum <- function(m1, m2) {
-    m1[rownames(m2), colnames(m2)] <- m1[rownames(m2),
-                                         colnames(m2)] + m2
-    m1
-}
-maskMat <- Reduce(accum, lapply(pow_gaps,
-                                function(mat) {
-                                    mat[is.na(mat)] <- tol + 1
-                                    mat <= tol
-                                }))
-maskMat <- maskMat > 0
-
-## take a kappa
-kap <- c(log(2),log(2))
-## see where it fits
-kapMax <- mapply(function(m1, m2, k) m1 >= k[1] & m1 < k[2] |
-                                     m2 > k[1] & m2 <= k[2] |
-                                     m1 <= k[1] & m2 >= k[2],
-                 pow_minMask, pow_maxMask, list(kap))
-## reduce to a single matrix
-kapMaxDist <- Reduce(accum, kapMax,
-                     init = matrix(0, nrow = nrow(kapMax[[1]]),
-                                   ncol = ncol(kapMax[[1]]),
-                                   dimnames = dimnames(kapMax[[1]])))
-kapMaxMask <- kapMaxDist
-kapMaxMask[!maskMat] <- NA
 ## plot it
-png(paste0("regionPlot", kap, ".png"), width = 3, height = 3,
-    units = "in", res = 240)
+kpnm <- as.character(kaps)
+kpnm <- gsub("\\.", "_", kpnm)
+png(paste0("regionPlot", paste(kpnm, collapse = "-"), ".png"),
+    width = 3, height = 3, units = "in", res = 240)
 par(mar = c(2.1, 2.1, 1.5, 1.5))
-alternativeHeatMap(kapMaxMask, main = "")
+alternativeHeatMap(kapMask, main = "")
+                   #breaks = seq(-0.5, 12.5*diff(kaps), by = 1))
 #mtext(bquote("Alternatives for ln"*kappa==.(kap)),
 #      line = 1.5, cex = 0.8)
 abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.25),
@@ -214,6 +309,39 @@ powerHeatMap(pow_rng[[ind]],
              legendLabs = c(0, 1), legendTitle = "",
              pal = colorRampPalette(c("white",
                                       "firebrick"))(17))
+
+
+## get max and min powers
+pow_max <- lapply(smth_byW,
+                  function(mt) apply(mt, c(1,2), max))
+pow_min <- lapply(smth_byW,
+                  function(mt) apply(mt, c(1,2), min))
+pow_rng <- mapply(`-`, pow_max, pow_min)
+## indices of matches and gap giivng number of max matches
+pow_minMax <- lapply(smth_byW,
+                     function(mt) apply(mt, c(1,2), leastMax))
+pow_maxMax <- lapply(smth_byW,
+                     function(mt) apply(mt, c(1,2), largestMax))
+pow_gaps <- mapply(`-`, pow_maxMax, pow_minMax)
+
+## convert back to parameter values
+ks <- lapply(smth_byW, function(ar) dimnames(ar)$logk)
+pow_minMats <- mapply(function(ks, mat) {
+    matrix(as.numeric(ks[mat]), nrow = nrow(mat),
+           dimnames = dimnames(mat)) },
+    ks, pow_minMax)
+pow_maxMats <- mapply(function(ks, mat) {
+    matrix(as.numeric(ks[mat]), nrow = nrow(mat),
+           dimnames = dimnames(mat)) },
+    ks, pow_maxMax)
+
+## take a kappa
+kap <- c(3,3)
+## see where it fits
+kapMax <- mapply(function(m1, m2, k) m1 >= k[1] & m1 < k[2] |
+                                     m2 > k[1] & m2 <= k[2] |
+                                     m1 <= k[1] & m2 >= k[2],
+                 pow_minMats, pow_maxMats, list(kap))
 
 ## new idea: take a kappa/range of kappas and produce the region where
 ## it isn't different than the maximum power across all kappas, plot
