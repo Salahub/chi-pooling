@@ -8,8 +8,8 @@ nsim <- (0.5/ster)^2
 ## given a w seq, the corresponding a values to span D(a,w)
 logscaleW <- FALSE
 if (logscaleW) {
-    w <- exp(seq(-6, 0, by = 0.5))
-} else {w <- seq(1/12, 1, length.out = 12) }
+    w <- exp(seq(-6, 0, by = 0.25))
+} else {w <- seq(1/20, 1, length.out = 20) }
 wDsets <- expand.grid(w = w, # w values
                       logD = seq(-5, 5, by = 0.125)) # target logDivs
 aseq <- apply(wDsets, 1, # find a values given w, logDiv
