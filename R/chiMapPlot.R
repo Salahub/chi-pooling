@@ -188,8 +188,8 @@ gFilt <- gaussFilt/sum(gaussFilt)
 
 ## LOADING ###########################################################
 ## read in the power data
-##dataFile <- "chiPowersMap80.Rds" (log w)
-dataFile <- "chiPowersMap80_unifW.Rds"
+dataFile <- "chiPowersMap80.Rds" # log(w)
+##dataFile <- "chiPowersMap80_unifW.Rds"
 chiPowers <- readRDS(dataFile)
 ## make into single data frame
 powdf <- cbind(chiPowers$pars, power = chiPowers$chi)
@@ -269,8 +269,17 @@ sameMaxMask <- Reduce(accumArr, sameMaxMask_byW, nullArr)
 ## scale this
 maxProp <- sweep(sameMaxMask, c(1,2), caseMat, `/`)
 
+## plots for the paper
+## -8 -8
+## -4 -4
+## -1 -1
+## 0 0
+## log(2) log(2)
+## 1 1
+## 4 4
+## 8 8
 ## select indices by kappa
-kaps <- c(-1,1)
+kaps <- c(1,8)
 kapInd <- kapSeq <= kaps[2] & kapSeq >= kaps[1]
 if (!any(kapInd)) {
     kapInd <- logical(length(kapSeq))
@@ -281,10 +290,13 @@ kapMat <- apply(sameMaxMask[,,kapInd], c(1,2), sum)#/sum(kapInd)
 ## mask this match
 kapMask <- kapMat; kapMask[!maskMat] <- NA
 
-## plot it
+## clean up name variables
 kpnm <- as.character(kaps)
+if (length(unique(kpnm)) == 1) kpnm <- kpnm[1]
 kpnm <- gsub("\\.", "_", kpnm)
-png(paste0("regionPlot", paste(kpnm, collapse = "-"), ".png"),
+suffix <- if (grepl("unifW", dataFile)) "unifW" else ""
+## plot the regions
+png(paste0("regionPlot", paste(kpnm, collapse = "-"), suffix, ".png"),
     width = 3, height = 3, units = "in", res = 240)
 par(mar = c(2.1, 2.1, 1.5, 1.5))
 alternativeHeatMap(kapMask, main = "")
@@ -294,62 +306,3 @@ alternativeHeatMap(kapMask, main = "")
 abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.25),
        col = adjustcolor("grey50", 0.5), lty = 2)
 dev.off()
-
-## plot the heatmaps of these
-ind <- 1
-par(mar = c(2.1, 2.1, 1.1, 3.1), mfrow = c(1,2))
-powerHeatMap(pow_minMask[[ind]],
-             main = expression(paste("Smallest ", kappa,
-                                     " giving maximum power")))
-powerHeatMap(pow_maxMask[[ind]],
-             main = expression(paste("Largest ", kappa,
-                                     " giving maximum power")))
-powerHeatMap(pow_rng[[ind]],
-             main = expression(paste("Range of powers in ", kappa)),
-             legendLabs = c(0, 1), legendTitle = "",
-             pal = colorRampPalette(c("white",
-                                      "firebrick"))(17))
-
-
-## get max and min powers
-pow_max <- lapply(smth_byW,
-                  function(mt) apply(mt, c(1,2), max))
-pow_min <- lapply(smth_byW,
-                  function(mt) apply(mt, c(1,2), min))
-pow_rng <- mapply(`-`, pow_max, pow_min)
-## indices of matches and gap giivng number of max matches
-pow_minMax <- lapply(smth_byW,
-                     function(mt) apply(mt, c(1,2), leastMax))
-pow_maxMax <- lapply(smth_byW,
-                     function(mt) apply(mt, c(1,2), largestMax))
-pow_gaps <- mapply(`-`, pow_maxMax, pow_minMax)
-
-## convert back to parameter values
-ks <- lapply(smth_byW, function(ar) dimnames(ar)$logk)
-pow_minMats <- mapply(function(ks, mat) {
-    matrix(as.numeric(ks[mat]), nrow = nrow(mat),
-           dimnames = dimnames(mat)) },
-    ks, pow_minMax)
-pow_maxMats <- mapply(function(ks, mat) {
-    matrix(as.numeric(ks[mat]), nrow = nrow(mat),
-           dimnames = dimnames(mat)) },
-    ks, pow_maxMax)
-
-## take a kappa
-kap <- c(3,3)
-## see where it fits
-kapMax <- mapply(function(m1, m2, k) m1 >= k[1] & m1 < k[2] |
-                                     m2 > k[1] & m2 <= k[2] |
-                                     m1 <= k[1] & m2 >= k[2],
-                 pow_minMats, pow_maxMats, list(kap))
-
-## new idea: take a kappa/range of kappas and produce the region where
-## it isn't different than the maximum power across all kappas, plot
-## this as a suggestive visual of likely alternatives
-
-## in support of that:
-## - prove that increasing M only increases the resolution of the plot
-## - increase the resolution and see what it looks like
-
-## report tests most contributing: max proportion*M largest statistics
-## for the minimum kappa
