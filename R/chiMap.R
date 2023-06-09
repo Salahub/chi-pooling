@@ -6,7 +6,7 @@ ster <- 0.005
 nsim <- (0.5/ster)^2
 
 ## given a w seq, the corresponding a values to span D(a,w)
-logscaleW <- FALSE
+logscaleW <- TRUE
 if (logscaleW) {
     w <- exp(seq(-6, 0, by = 0.25))
 } else {w <- seq(1/20, 1, length.out = 20) }
@@ -71,4 +71,5 @@ stopCluster(clst)
 ## store the simulation results
 chiPowers <- list(pars = params,
                   chi = unlist(powerschi))
-saveRDS(chiPowers, "chiPowersMap80_unifW.Rds")
+filnm <- if (logscaleW) "chiPowerMaps80.Rds" else "chiPowerMaps80_unifW.Rds"
+saveRDS(chiPowers, filnm)
