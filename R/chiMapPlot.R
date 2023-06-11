@@ -188,8 +188,8 @@ gFilt <- gaussFilt/sum(gaussFilt)
 
 ## LOADING ###########################################################
 ## read in the power data
-dataFile <- "chiPowersMap80.Rds" # log(w)
-##dataFile <- "chiPowersMap80_unifW.Rds"
+##dataFile <- "chiPowersMap80.Rds" # log(w)
+dataFile <- "chiPowersMap80_unifW.Rds"
 chiPowers <- readRDS(dataFile)
 ## make into single data frame
 powdf <- cbind(chiPowers$pars, power = chiPowers$chi)
@@ -279,7 +279,7 @@ maxProp <- sweep(sameMaxMask, c(1,2), caseMat, `/`)
 ## 4 4
 ## 8 8
 ## select indices by kappa
-kaps <- c(1,8)
+kaps <- c(-6,6)
 kapInd <- kapSeq <= kaps[2] & kapSeq >= kaps[1]
 if (!any(kapInd)) {
     kapInd <- logical(length(kapSeq))
@@ -297,7 +297,7 @@ kpnm <- gsub("\\.", "_", kpnm)
 suffix <- if (grepl("unifW", dataFile)) "unifW" else ""
 ## plot the regions
 png(paste0("regionPlot", paste(kpnm, collapse = "-"), suffix, ".png"),
-    width = 3, height = 3, units = "in", res = 240)
+    width = 3, height = 3, units = "in", res = 480)
 par(mar = c(2.1, 2.1, 1.5, 1.5))
 alternativeHeatMap(kapMask, main = "")
                    #breaks = seq(-0.5, 12.5*diff(kaps), by = 1))
