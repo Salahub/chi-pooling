@@ -32,7 +32,7 @@ muMat <- sdMat <- matrix(nrow = nsim, ncol = ngroup)
 nMat <- matrix(nrow = nsim, ncol = ngroup)
 pMat <- array(dim = c(nsim, ngroup, length(thetas)))
 poolMat <- array(dim = c(nsim, length(kseq), length(thetas)))
-set.seed(12150611)
+set.seed(9381278)
 for (ii in 1:nsim) {
     ## start with simulated data
     obs <- rnorm(npop, mean = 65, sd = 5)
@@ -65,21 +65,30 @@ abline(v = mean(muMat[real,]), col = "black")
 abline(v = muMat[real,], col = "gray50")
 abline(h = 0.05, lty = 3)
 
-## coverage probabilities, estimates
+## coverage probabilities, estimates for a range of cutoffs
+safeRange <- function(x) {
+    if (length(x) == 0) {
+        c(NA, NA)
+    } else range(x)
+}
+cutoffs <- minQuants[c("0.1%", "1%", "5%", "10%"), "100"]
 poolTheta <- matrix(thetas[apply(poolMat, c(1,2), which.max)],
-                    ncol = 81)
-poolAccept <- apply(poolMat >= minQuants["5%", "100"], c(1,2), which)
-poolInclude <- apply(poolAccept, c(1,2),
-                     function(inds) 251 %in% unlist(inds))
-poolSig <- apply(poolAccept, c(1,2),
-                 function(inds) length(inds) > 0)
-poolCovP <- apply(poolInclude, 2, sum)/apply(poolSig, 2, sum)
+                    ncol = length(kseq))
+poolIntervals <- lapply(cutoffs,
+                        function(ct) apply(poolMat >= ct, c(1,2),
+                                           function(x) {
+                                               safeRange(thetas[which(x)])
+                                           }))
+poolInclude <- lapply(poolIntervals,
+                      function(mat) mat[1,,] <= 65 & mat[2,,] >= 65)
+poolCovP <- lapply(poolInclude,
+                   function(mat) apply(mat, 2, mean, na.rm = TRUE))
 ## using the mean
 meanTheta <- apply(muMat, 1, mean)
 meansd <- sqrt(apply(sdMat^2*nMat*(nMat-1), 1, sum)/(npop-1))/sqrt(npop)
-meanInt <- cbind(meanTheta - 1.96*meansd,
-                 meanTheta + 1.96*meansd)
-meanCovP <- mean(meanInt[,1] < 65 & meanInt[,2] > 65)
+meanInt <- cbind(meanTheta - qnorm(0.975)*meansd,
+                 meanTheta + qnorm(0.975)*meansd)
+meanCovP <- mean(meanInt[,1] <= 65 & meanInt[,2] >= 65)
 
 ## middle line (kappa = 1) looks normal...
 ## can we fit a normal curve to it?
