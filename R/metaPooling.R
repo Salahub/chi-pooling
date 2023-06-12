@@ -27,7 +27,7 @@ ngroup <- 8
 npop <- 104
 minQuants <- readRDS("curveMinQuantiles.Rds")
 kseq <- exp(seq(-8, 8, by = 0.2))
-thetas <- seq(60, 70, by = 0.02)
+thetas <- seq(60, 70, by = 0.01)
 muMat <- sdMat <- matrix(nrow = nsim, ncol = ngroup)
 nMat <- matrix(nrow = nsim, ncol = ngroup)
 pMat <- array(dim = c(nsim, ngroup, length(thetas)))
@@ -51,19 +51,25 @@ for (ii in 1:nsim) {
     poolMat[ii,,] <- simpool <- t(kappaSweep(simps, kseq = kseq))
     if ((ii %% 10) == 0) cat("\r Done ", ii, " of ", nsim)
 }
+## compute the minimum by theta
+minpool <- apply(poolMat, c(1,3), min)
 
 ## plot a realization
+cols <- RColorBrewer::brewer.pal(4, "Dark2")
 real <- sample(1:nsim, 1)
-plot(thetas, poolMat[real,81,], type = 'l', ylim = c(0,1),
-     col = adjustcolor("firebrick", 0.25), xlab = expression(theta),
-     ylab = expression(g[chi]))
-for (ii in 10:80) lines(thetas, poolMat[real,ii,], type = 'l',
-                         col = if (ii <= 40) adjustcolor("steelblue", 0.25) else if (ii == 41) adjustcolor("black", 0.25) else adjustcolor("firebrick", 0.25),
-                         lwd = if (log(kseq)[ii] == 0) 2 else 1)
-abline(v = 65, col = "black", lty = 2, lwd = 2)
-abline(v = mean(muMat[real,]), col = "black")
-abline(v = muMat[real,], col = "gray50")
-abline(h = 0.05, lty = 3)
+plot(thetas,  minpool[real,], type = 'l', ylim = c(0,1),
+     col = adjustcolor(cols[4], 0.8), xlab = expression(theta),
+     ylab = expression(g[chi]), xlim = c(60, 70))
+for (ii in c(10, 41)) lines(thetas, poolMat[real,ii,], type = 'l',
+                         col = if (ii <= 40) adjustcolor(cols[1], 0.8) else if (ii == 41) adjustcolor(cols[2], 0.8) else adjustcolor(cols[3], 0.8))
+                                        #lwd = if (log(kseq)[ii] == 0) 2 else 1)
+lines(thetas, poolMat[real,81,], col = adjustcolor(cols[3], 0.8))
+abline(v = 65, col = adjustcolor("black", 0.4), lty = 2, lwd = 2)
+abline(v = mean(muMat[real,]), col = adjustcolor("black", 0.4), lwd = 2)
+abline(v = muMat[real,], col = adjustcolor("gray50", 0.4))
+abline(h = minQuants[c("5%"), "100"], lty = 3)
+
+## 789, 1061, 1192, 1921
 
 ## coverage probabilities, estimates for a range of cutoffs
 safeRange <- function(x) {
