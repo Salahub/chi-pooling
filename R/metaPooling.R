@@ -60,7 +60,7 @@ ngroup <- 8
 npop <- 104
 minQuants <- readRDS("curveMinQuantiles.Rds")
 kseq <- exp(seq(-8, 8, by = 0.2))
-thetas <- seq(-2, 2, by = 0.01)
+thetas <- seq(-2.5, 2.5, by = 0.01)
 muMat <- sdMat <- matrix(nrow = nsim, ncol = ngroup)
 nMat <- matrix(nrow = nsim, ncol = ngroup)
 pMat <- array(dim = c(nsim, ngroup, length(thetas)))
@@ -103,9 +103,9 @@ lines(thetas, poolMat[real,81,], col = adjustcolor(cols[3], 0.8))
 abline(v = 0, col = adjustcolor("black", 0.4), lty = 2, lwd = 2)
 abline(v = mean(muMat[real,]), col = adjustcolor("black", 0.4), lwd = 2)
 abline(v = muMat[real,], col = adjustcolor("gray50", 0.4))
-abline(h = minQuants[c("5%"), "100"], lty = 3)
+abline(h = 0.05, lty = 3)
 
-## 120, 280, 329
+## 120, 240, 280, 329
 
 ## coverage probabilities, estimates for a range of cutoffs
 safeRange <- function(x) {
@@ -159,13 +159,21 @@ abline(h = 1 - cutoff, lty = 2)
 
 ## plot all intervals for a particular kappa
 kapInd <- 41
-pltMat <- poolIntervals[[ctind]][,,kapInd]
-plot()
+pltMat <- poolIntervals[[ctind]][,,kapInd] #t(meanInt[order(meanInt[,1]),])
+pltMat <- pltMat[, order(pltMat[1, ])]
+plot(NA, xlim = range(pltMat, na.rm = TRUE), ylim = c(1, nsim),
+     ylab = "Interval", xlab = "Bounds")
+abline(h = seq(0, 1000, by = 200), v = seq(-1, 1, by = 0.5),
+       col = "gray80")
+for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
+                         col = adjustcolor("black", 0.5))
 
 ## plot the estimates by kappa
-plot(NA, xlim = log(range(kseq), 10), ylim = c(-0.5, 0.5),
+plot(NA, xlim = log(range(kseq), 10), ylim = c(-1, 1),
      xlab = expression(log[10]~kappa),
      ylab = "Central quantile of difference from true mean")
+abline(v = seq(-3, 3, by = 1), h = seq(-1, 1, by = 0.5),
+       col = "gray80")
 addQuantPoly(t(poolTheta), kseq = kseq)
 
 ## middle line (kappa = 1) looks normal...
@@ -174,11 +182,5 @@ addQuantPoly(t(poolTheta), kseq = kseq)
 
 ## look at the covid dataset
 data(dat.axfors2021) ## requires estimating odds ratios
+## or the difference in means data
 data(dat.normand1999) ## differences in means but classic otherwise
-data(dat.lim2014) ## offspring size data (counts)
-data(dat.franchini2012) ## parkinsons, means and sds
-data(dat.bakdash2021) ## big but multi-leveled, pretty involved
-
-## try this simple idea out
-normandps <- paramSweep(dat.normand1999$m1i, dat.normand1999$sd1i,
-                        range = c()
