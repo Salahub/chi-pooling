@@ -1,5 +1,32 @@
 library(metadat)
 
+## custom plotting function with narrow margins
+narrowPlot <- function(xgrid, ygrid, main = "", xlab = "", ylab = "",
+                       xticks = xgrid, yticks = ygrid,
+                       mars = c(2.1, 2.1, 1.1, 1.1),
+                       xlim = range(xgrid), ylim = range(ygrid),
+                       addGrid = TRUE, ...) {
+    par(mar = mars) # set narrow margins
+    plot(NA, ylim = ylim, xlim = xlim, xaxt = 'n', xlab = "",
+         yaxt = 'n', ylab = "", main = "", ...)
+    ## add labels
+    mtext(main, side = 3, line = 0, cex = 0.8) # main
+    mtext(ylab, side = 2, line = 1, cex = 0.8) # ylab
+    mtext(xlab, side = 1, line = 1, padj = 0, cex = 0.8) # xlab
+    ## add grid lines
+    if (addGrid) {
+        abline(h = ygrid, v = xgrid, lty = 1,
+               col = adjustcolor("gray", alpha.f = 0.4))
+    }
+    ## and ticks
+    mtext(side = 1, at = xgrid, text = "|", line = 0, cex = 0.5,
+          padj = -2)
+    mtext(text = xticks, at = xgrid, side = 1, cex = 0.8)
+    mtext(side = 2, at = ygrid, text = "|", line = 0, cex = 0.5,
+          padj = 1)
+    mtext(text = yticks, at = ygrid, side = 2, cex = 0.8)
+}
+
 ## quantile plot of central range
 addQuantPoly <- function(mat, qnts = c(0.005, 0.025, 0.25),
                          kseq = exp(seq(-8, 8, by = 0.25)),
@@ -90,22 +117,31 @@ minpool <- apply(poolMat, c(1,3), min)
 
 ## plot a realization
 cols <- RColorBrewer::brewer.pal(4, "Dark2")
-real <- sample(1:nsim, 1)
-plot(thetas,  minpool[real, ], type = 'l',
-     ##poolMat[real, minimax[real], ], type = 'l',
-     ylim = c(0,1), col = adjustcolor(cols[4], 0.8),
-     xlab = expression(theta), ylab = expression(g[chi]),
-     xlim = c(-2, 2))
-for (ii in c(10, 41)) lines(thetas, poolMat[real,ii,], type = 'l',
+real <- 80 # sample(1:nsim, 1)
+png("metaPoolCurves.png", width = 5, height = 3, res = 480,
+    units = "in")
+narrowPlot(xgrid = seq(-2, 2, by = 1), ygrid = seq(0, 1, by = 0.2),
+           xlab = expression(hat(theta)),
+           ylab = expression(paste("chi(", bold(p), ";", kappa, ")")),
+           addGrid = FALSE)
+lines(thetas,  minpool[real, ], type = 'l',
+      col = adjustcolor(cols[4], 0.8))
+      ##poolMat[real, minimax[real], ], type = 'l',
+for (ii in c(1, 41, 81)) lines(thetas, poolMat[real,ii,], type = 'l',
                          col = if (ii <= 40) adjustcolor(cols[1], 0.8) else if (ii == 41) adjustcolor(cols[2], 0.8) else adjustcolor(cols[3], 0.8))
                                         #lwd = if (log(kseq)[ii] == 0) 2 else 1)
-lines(thetas, poolMat[real,81,], col = adjustcolor(cols[3], 0.8))
-abline(v = 0, col = adjustcolor("black", 0.4), lty = 2, lwd = 2)
-abline(v = mean(muMat[real,]), col = adjustcolor("black", 0.4), lwd = 2)
+#lines(thetas, poolMat[real,81,], col = adjustcolor(cols[3], 0.8))
+abline(v = 0, col = adjustcolor("black", 0.8), lty = 2, lwd = 1)
+abline(v = mean(muMat[real,]), col = adjustcolor("black", 0.6), lwd = 1)
 abline(v = muMat[real,], col = adjustcolor("gray50", 0.4))
 abline(h = 0.05, lty = 3)
+legend(x = "topleft", legend = c(round(log(kseq[c(1, 41, 81)], 10),
+                                       1), "Min"),
+       lty = 1, col = cols, cex = 0.8,
+       title = expression(paste(log[10], "(", kappa, ")")))
+dev.off()
 
-## 120, 240, 280, 329
+## 80, 120, 240, 280, 329, 973, 709
 
 ## coverage probabilities, estimates for a range of cutoffs
 safeRange <- function(x) {
@@ -147,15 +183,29 @@ minCovP <- lapply(minInclude, mean, na.rm = TRUE)
 ## plot the coverage probabilities by kappa
 ctind <- 2
 cutoff <- cutoffs[ctind]
+png(paste0("meta", 100*cutoff, "pctCovP.png"), width = 3, height = 3,
+    res = 480, units = "in")
 tempCovP <- lowess(poolCovP[[ctind]], f = 1/6)$y
-minCovP
-plot(log(kseq, 10), tempCovP, type = 'l', ylim = c(0.80, 1),
-     ylab = "Coverage probability", xlab = expression(log[10]~kappa))
+narrowPlot(xgrid = seq(-3, 3, by = 3), ygrid = seq(0.8, 1, by = 0.05),
+           ylab = "Coverage probability", xlim = c(-3.5, 3.5),
+           xlab = expression(paste(log[10], "(", kappa, ")")))
+lines(log(kseq, 10), tempCovP)
 polygon(c(log(kseq, 10), rev(log(kseq, 10))),
         c(tempCovP + qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim),
           rev(tempCovP - qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim))),
-        col = adjustcolor("gray80", 0.5))
+        col = adjustcolor("gray80", 0.5), border = NA)
 abline(h = 1 - cutoff, lty = 2)
+dev.off()
+
+## plot estimates by kappa
+png("metaEstimates.png", width = 3, height = 3, res = 480,
+    units = "in")
+narrowPlot(xgrid = seq(-3, 3, by = 1.5), ygrid = seq(-1, 1, by = 0.5),
+           xlab = expression(paste(log[10], "(", kappa, ")")),
+           xlim = c(-3.5, 3.5),
+           ylab = "Error")
+addQuantPoly(t(poolTheta), kseq = kseq, cex = 0.6)
+dev.off()
 
 ## plot all intervals for a particular kappa
 kapInd <- 41
@@ -167,14 +217,6 @@ abline(h = seq(0, 1000, by = 200), v = seq(-1, 1, by = 0.5),
        col = "gray80")
 for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
                          col = adjustcolor("black", 0.5))
-
-## plot the estimates by kappa
-plot(NA, xlim = log(range(kseq), 10), ylim = c(-1, 1),
-     xlab = expression(log[10]~kappa),
-     ylab = "Central quantile of difference from true mean")
-abline(v = seq(-3, 3, by = 1), h = seq(-1, 1, by = 0.5),
-       col = "gray80")
-addQuantPoly(t(poolTheta), kseq = kseq)
 
 ## middle line (kappa = 1) looks normal...
 ## can we fit a normal curve to it?
