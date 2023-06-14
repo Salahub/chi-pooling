@@ -1,5 +1,6 @@
 library(metadat)
 
+## FUNCTIONS #########################################################
 ## custom plotting function with narrow margins
 narrowPlot <- function(xgrid, ygrid, main = "", xlab = "", ylab = "",
                        xticks = xgrid, yticks = ygrid,
@@ -68,18 +69,64 @@ paramSweep <- function(mus, sds, thetas) {
 }
 
 ## sweeping with kappa afterwards
-kappaSweep <- function(ps, kseq = exp(seq(-8, 8, by = 0.1))) {
+kappaSweep <- function(ps, np, kseq = exp(seq(-8, 8, by = 0.1))) {
     sapply(kseq,
            function(kap) {
                apply(ps, 2,
                      function(p) pchisq(sum(qchisq(p, kap,
                                                lower.tail = FALSE)),
-                                        length(p)*kap,
+                                        np*kap,
                                         lower.tail = FALSE))
            })
 }
 
-## repeat this process many times to compare bias...
+## a function to generate from fixed means assuming normality
+fixedNormal <- function(npop, ngroup, mns = runif(-2, 2, ngroup),
+                        sd = 1) {
+    obs <- rep(mns, npop/ngroup) + rnorm(npop, mean = 0, sd = sd)
+    grp <- rep(1:ngroup, npop/ngroup)
+    cbind(x = obs, group = grp)
+}
+## the random effects model generation function
+randomNormal <- function(npop, ngroup, mn = 0, sd = 1) {
+    obs <- rnorm(npop, mean = mn, sd = 1)
+    grp <- sample(rep(1:ngroup, npop/ngroup))
+    cbind(x = obs, group = grp)
+}
+
+## clean up code by defining the simulation loop here
+simEvidentialRegion <- function(genFn, nsim = 1e3, npop = 104,
+                                ngroup = 8,
+                                kseq = seq(-8, 8, by = 0.2),
+                                thetas = seq(-2.5, 2.5, by = 0.01)) {
+    muMat <- sdMat <- matrix(nrow = nsim, ncol = ngroup)
+    nMat <- matrix(nrow = nsim, ncol = ngroup)
+    pMat <- array(dim = c(nsim, ngroup, length(thetas)))
+    poolMat <- array(dim = c(nsim, length(kseq), length(thetas)))
+    for (ii in 1:nsim) {
+        sim <- genFn(npop, ngroup) # generate data using genFun
+        group <- sim[, "group"]
+        obs <- sim[, "x"]
+        nMat[ii,] <- table(group) # counts by group
+        muMat[ii,] <- tapply(obs, group, mean) # means
+        sdMat[ii,] <- tapply(obs, group, sd)/sqrt(table(group)) # sds
+        pMat[ii,,] <- simps <- t(paramSweep(muMat[ii,], sdMat[ii,],
+                                            thetas)) # p-vals
+        poolMat[ii,,] <- t(kappaSweep(simps, np = ngroup,
+                                      kseq = kseq)) # pooled vals
+        if ((ii %% 10) == 0) cat("\r Done ", ii, " of ", nsim)
+    }
+    ## compute the mini-max kappa for each repetition
+    minimax <- apply(apply(poolMat, c(1,2), max), 1, which.min)
+    ## and the minimum over kappa for each repetition
+    minpool <- apply(poolMat, c(1,3), min)
+    list(muMat = muMat, nMat = nMat, pMat = pMat, poolMat = poolMat,
+         minimax = minimax, minKappa = minpool)
+}
+
+
+## SIMULATIONS #######################################################
+## settings
 mn <- 0
 std <- 2
 nsim <- 1000
@@ -88,6 +135,20 @@ npop <- 104
 minQuants <- readRDS("curveMinQuantiles.Rds")
 kseq <- exp(seq(-8, 8, by = 0.2))
 thetas <- seq(-2.5, 2.5, by = 0.01)
+
+## FIXED EFFECTS
+means <- seq(-1, 1, length.out = ngroup)
+stdFixed <- sqrt(std^2 - var(rep(means, each = npop/ngroup)))
+fixedGen <- function(np, ng) fixedNormal(np, ng,
+                                         mns = means,
+                                         sd = stdFixed)
+set.seed(9381278)
+fixedSim <- simEvidentialRegion(fixedGen, nsim = 5, kseq = kseq,
+                                thetas = thetas)
+
+
+## RANDOM MEANS
+## repeat this process many times to compare bias...
 muMat <- sdMat <- matrix(nrow = nsim, ncol = ngroup)
 nMat <- matrix(nrow = nsim, ncol = ngroup)
 pMat <- array(dim = c(nsim, ngroup, length(thetas)))
@@ -117,7 +178,7 @@ minpool <- apply(poolMat, c(1,3), min)
 
 ## plot a realization
 cols <- RColorBrewer::brewer.pal(4, "Dark2")
-real <- 80 # sample(1:nsim, 1)
+real <- sample(1:nsim, 1) # 80
 png("metaPoolCurves.png", width = 5, height = 3, res = 480,
     units = "in")
 narrowPlot(xgrid = seq(-2, 2, by = 1), ygrid = seq(0, 1, by = 0.2),
@@ -208,8 +269,8 @@ addQuantPoly(t(poolTheta), kseq = kseq, cex = 0.6)
 dev.off()
 
 ## plot all intervals for a particular kappa
-kapInd <- 41
-pltMat <- poolIntervals[[ctind]][,,kapInd] #t(meanInt[order(meanInt[,1]),])
+kapInd <- 45
+pltMat <- poolIntervals[[ctind]][,,kapInd] # t(meanInt[order(meanInt[,1]),])
 pltMat <- pltMat[, order(pltMat[1, ])]
 plot(NA, xlim = range(pltMat, na.rm = TRUE), ylim = c(1, nsim),
      ylab = "Interval", xlab = "Bounds")
@@ -218,9 +279,51 @@ abline(h = seq(0, 1000, by = 200), v = seq(-1, 1, by = 0.5),
 for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
                          col = adjustcolor("black", 0.5))
 
-## middle line (kappa = 1) looks normal...
-## can we fit a normal curve to it?
-## suggested: nls() with c phi((theta - b)/a), a,b,c params
+## 2 might be best... include it specifically
+## get max intervals, compare classic interval to the evidence interval
+## should the interval exclude any means in this case? does the classic
+## do this
+## make this clearer, make look at the ratios and see where they
+## most disagree
+
+## which samples give the greatest disagreement between classic and
+## evidential intervals?
+classLens <- meanInt[,2] - meanInt[,1]
+poolLens <- apply(poolIntervals[[ctind]][,,kapInd], 2, diff)
+plot(classLens, poolLens,
+     pch = as.numeric(poolInclude[[ctind]][,kapInd]),
+     col = as.numeric(meanInt[,1] <= mn & meanInt[,2] >= mn) + 1)
+abline(a = 0, b = 1)
+
+## ratios
+lenRat <- poolLens/classLens
+## get the max and min examples
+lenRatSrt <- order(lenRat, na.last = FALSE)
+real <- lenRatSrt[15]
+## plot some of the NA cases
+narrowPlot(xgrid = seq(-2, 2, by = 1), ygrid = seq(0, 1, by = 0.2),
+           xlab = expression(hat(theta)),
+           ylab = expression(paste("chi(", bold(p), ";", kappa, ")")),
+           addGrid = FALSE)
+lines(thetas, poolMat[real, 45,], type = 'l',
+      col = adjustcolor(cols[2], 0.8))
+lines(thetas, poolMat[real, 10,], type = 'l',
+      col = adjustcolor(cols[1], 0.8))
+abline(v = 0, col = adjustcolor("black", 0.8), lty = 2, lwd = 1)
+abline(v = muMat[real,], col = adjustcolor("gray50", 0.4))
+included <- matrix(nrow = ngroup, ncol = length(thetas))
+for (ii in 1:ngroup) {
+    included[ii,] <- muMat[real, ii] + 1.96*sdMat[real, ii] >= thetas &
+        muMat[real, ii] - 1.96*sdMat[real, ii] <= thetas
+}
+allInclude <- apply(included, 2, sum)
+lines(thetas, allInclude/ngroup)
+abline(h = 0.05, lty = 3)
+legend(x = "topleft", legend = c(round(log(kseq[c(1, 41, 81)], 10),
+                                       1), "Min"),
+       lty = 1, col = cols, cex = 0.8,
+       title = expression(paste(log[10], "(", kappa, ")")))
+abline(v = c(meanInt[real, 1], meanInt[real, 2]))
 
 ## look at the covid dataset
 data(dat.axfors2021) ## requires estimating odds ratios
