@@ -60,11 +60,11 @@ addQuantPoly <- function(mat, qnts = c(0.005, 0.025, 0.25),
 }
 
 ## parameter sweep function
-paramSweep <- function(mus, sds, thetas) {
+paramSweep <- function(mus, sds, thetas, pfun = pnorm) {
     mus2 <- rep(mus, each = length(thetas))
     sds2 <- rep(sds, each = length(thetas))
-    matrix(2*pnorm(abs((mus2 - rep(thetas, times = length(mus)))/sds2),
-                   lower.tail = FALSE),
+    stdDs <- abs((mus2 - rep(thetas, times = length(mus)))/sds2)
+    matrix(2*pfun(q = stdDs, lower.tail = FALSE),
            nrow = length(thetas))
 }
 
@@ -80,17 +80,25 @@ kappaSweep <- function(ps, np, kseq = exp(seq(-8, 8, by = 0.1))) {
            })
 }
 
-## a function to generate from fixed means assuming normality
-fixedNormal <- function(npop, ngroup, mns = runif(-2, 2, ngroup),
+## the case of inhomogeneous means (i.e. biased means)
+inhomNormal <- function(npop, ngroup, mns = runif(-2, 2, ngroup),
                         sd = 1) {
     obs <- rep(mns, npop/ngroup) + rnorm(npop, mean = 0, sd = sd)
     grp <- rep(1:ngroup, npop/ngroup)
     cbind(x = obs, group = grp)
 }
-## the random effects model generation function
-randomNormal <- function(npop, ngroup, mn = 0, sd = 1) {
-    obs <- rnorm(npop, mean = mn, sd = 1)
+## the fixed effects model generation function
+fixedNormal <- function(npop, ngroup, mn = 0, sd = 1) {
+    obs <- rnorm(npop, mean = mn, sd = sd)
     grp <- sample(rep(1:ngroup, npop/ngroup))
+    cbind(x = obs, group = grp)
+}
+## the random effects model generation function
+randomNormal <- function(npop, ngroup, mn = 0, mnsd = 1,
+                         sd = 1) {
+    mns <- rnorm(ngroup, mean = mn, sd = mnsd)
+    obs <- rep(mns, npop/ngroup) + rnorm(npop, mean = 0, sd = sd)
+    grp <- rep(1:ngroup, npop/ngroup)
     cbind(x = obs, group = grp)
 }
 
@@ -103,6 +111,7 @@ simEvidentialRegion <- function(genFn, nsim = 1e3, npop = 104,
     nMat <- matrix(nrow = nsim, ncol = ngroup)
     pMat <- array(dim = c(nsim, ngroup, length(thetas)))
     poolMat <- array(dim = c(nsim, length(kseq), length(thetas)))
+    pfun <- function(q, ...) pt(q, df = (npop/ngroup)-1, ...)
     for (ii in 1:nsim) {
         sim <- genFn(npop, ngroup) # generate data using genFun
         group <- sim[, "group"]
@@ -111,7 +120,8 @@ simEvidentialRegion <- function(genFn, nsim = 1e3, npop = 104,
         muMat[ii,] <- tapply(obs, group, mean) # means
         sdMat[ii,] <- tapply(obs, group, sd)/sqrt(table(group)) # sds
         pMat[ii,,] <- simps <- t(paramSweep(muMat[ii,], sdMat[ii,],
-                                            thetas)) # p-vals
+                                            thetas,
+                                            pfun = pfun)) # p-vals
         poolMat[ii,,] <- t(kappaSweep(simps, np = ngroup,
                                       kseq = kseq)) # pooled vals
         if ((ii %% 10) == 0) cat("\r Done ", ii, " of ", nsim)
@@ -120,8 +130,74 @@ simEvidentialRegion <- function(genFn, nsim = 1e3, npop = 104,
     minimax <- apply(apply(poolMat, c(1,2), max), 1, which.min)
     ## and the minimum over kappa for each repetition
     minpool <- apply(poolMat, c(1,3), min)
-    list(muMat = muMat, nMat = nMat, pMat = pMat, poolMat = poolMat,
+    list(muMat = muMat, sdMat = sdMat,
+         nMat = nMat, pMat = pMat, poolMat = poolMat,
          minimax = minimax, minKappa = minpool)
+}
+
+## safe estimates for a range of cutoffs
+safeRange <- function(x) {
+    if (length(x) == 0) {
+        c(NA, NA)
+    } else range(x)
+}
+
+## use a simulation and compute coverage probabilities, etc.
+getCoverage <- function(sim, thetas, kseq,
+                        cutoffs = c(0.1, 0.05, 0.02, 0.01,
+                                    0.005)) {
+    poolTheta <- matrix(thetas[apply(sim$poolMat, c(1,2),
+                                     which.max)],
+                        ncol = length(kseq))
+    poolIntervals <- lapply(cutoffs,
+                            function(ct) {
+                                apply(sim$poolMat >= ct,
+                                      c(1,2),
+                                      function(x) {
+                                          safeRange(thetas[which(x)])
+                                      })
+                            })
+    poolInclude <- lapply(poolIntervals,
+                          function(mat) mat[1,,] <= mn & mat[2,,] >= mn)
+    poolCovP <- lapply(poolInclude,
+                       function(mat) apply(mat, 2, mean, na.rm = TRUE))
+    ## using the mean
+    meanTheta <- apply(sim$muMat, 1, mean)
+    meansd <- sqrt(apply(sdMat^2*nMat*(nMat-1), 1,
+                         sum)/(npop-1))/sqrt(npop)
+    meanInt <- cbind(meanTheta - qnorm(0.975)*meansd,
+                     meanTheta + qnorm(0.975)*meansd)
+    meanCovP <- mean(meanInt[,1] <= mn & meanInt[,2] >= mn)
+    ## return everything
+    list(poolTheta = poolTheta, poolIntervals = poolIntervals,
+         poolInclude = poolInclude, poolCovP = poolCovP,
+         meanTheta = meanTheta, meansd = meansd, meanInt = meanInt,
+         meanCovP = meanCovP, minTheta = minTheta,
+         minInterval = min)
+}
+
+## plot a realization based on the simulated data
+plotRealization <- function(sims, thetas, kseq,
+                            ind = sample(1:nsim, 1),
+                            cols = 1:4, kaps = c(1, 41, 81),
+                            refKap = 41) {
+    lines(thetas,  sims$minKappa[ind, ], type = 'l',
+          col = adjustcolor(cols[4], 0.8))
+    for (ii in kaps) lines(thetas, sims$poolMat[ind,ii,], type = 'l',
+                           col = if (ii <= 40) {
+                                     adjustcolor(cols[1], 0.8)
+                                 } else if (ii == 41) {
+                                     adjustcolor(cols[2], 0.8)
+                                 } else adjustcolor(cols[3], 0.8))
+    abline(v = 0, col = adjustcolor("black", 0.8), lty = 2, lwd = 1)
+    abline(v = mean(sims$muMat[ind,]),
+           col = adjustcolor("black", 0.6), lwd = 1)
+    abline(v = sims$muMat[ind,], col = adjustcolor("gray50", 0.4))
+    abline(h = 0.05, lty = 3)
+    legend(x = "topleft", legend = c(round(log(kseq[kaps], 10),
+                                           1), "Min"),
+           lty = 1, col = cols, cex = 0.8,
+           title = expression(paste(log[10], "(", kappa, ")")))
 }
 
 
@@ -136,18 +212,76 @@ minQuants <- readRDS("curveMinQuantiles.Rds")
 kseq <- exp(seq(-8, 8, by = 0.2))
 thetas <- seq(-2.5, 2.5, by = 0.01)
 
-## FIXED EFFECTS
-means <- seq(-1, 1, length.out = ngroup)
-stdFixed <- sqrt(std^2 - var(rep(means, each = npop/ngroup)))
+## FIXED EFFECTS ##
 fixedGen <- function(np, ng) fixedNormal(np, ng,
-                                         mns = means,
-                                         sd = stdFixed)
+                                         sd = std)
 set.seed(9381278)
-fixedSim <- simEvidentialRegion(fixedGen, nsim = 5, kseq = kseq,
+fixedSim <- simEvidentialRegion(fixedGen, nsim = nsim, kseq = kseq,
                                 thetas = thetas)
 
+## plot a realization
+cols <- RColorBrewer::brewer.pal(4, "Dark2")
+real <- sample(1:nsim, 1)
+png("metaPoolCurves.png", width = 5, height = 3, res = 480,
+    units = "in")
+narrowPlot(xgrid = seq(-2, 2, by = 1), ygrid = seq(0, 1, by = 0.2),
+           xlab = expression(hat(theta)),
+           ylab = expression(paste("chi(", bold(p), ";", kappa, ")")),
+           addGrid = FALSE)
+plotRealization(fixedSim, thetas = thetas, kseq = kseq, cols = cols,
+                kaps = c(1, 41, 81), ind = real)
+dev.off()
 
-## RANDOM MEANS
+## 786
+## 80, 120, 240, 280, 329, 973, 709
+
+## RANDOM EFFECTS ##
+mnsd <- 1
+randGen <- function(np, ng) randomNormal(np, ng, mnsd = mnsd,
+                                         sd = sqrt(std^2 - mnsd^2))
+set.seed(8251506)
+randSim <- simEvidentialRegion(randGen, nsim = nsim, kseq = kseq,
+                               thetas = thetas)
+
+## plot a realization
+cols <- RColorBrewer::brewer.pal(4, "Dark2")
+real <- sample(1:nsim, 1)
+png("metaPoolCurves.png", width = 5, height = 3, res = 480,
+    units = "in")
+narrowPlot(xgrid = seq(-1, 1, by = 0.5),
+           ygrid = seq(0, 1, by = 0.2),
+           xlab = expression(x),
+           ylab = expression(paste("chi(", bold(p), ";", kappa, ")")),
+           addGrid = FALSE)
+plotRealization(randSim, thetas = thetas, kseq = kseq, cols = cols,
+                kaps = c(1, 41, 81), ind = real)
+dev.off()
+
+## 1, 5, 29, 41
+
+## INHOMOGENEOUS CASE ##
+mns <- rnorm(ngroup, sd = mnsd)
+inhom <- function(np, ng) inhomNormal(np, ng, mns = mns,
+                                      sd = sqrt(std^2 - mnsd^2))
+set.seed(16162023)
+inhomSim <- simEvidentialRegion(inhom, nsim = nsim, kseq = kseq,
+                                thetas = thetas)
+
+## plot a realization
+cols <- RColorBrewer::brewer.pal(4, "Dark2")
+real <- sample(1:nsim, 1)
+png("metaPoolCurves.png", width = 5, height = 3, res = 480,
+    units = "in")
+narrowPlot(xgrid = seq(-1, 1, by = 0.5),
+           ygrid = seq(0, 1, by = 0.2),
+           xlab = expression(x),
+           ylab = expression(paste("chi(", bold(p), ";", kappa, ")")),
+           addGrid = FALSE)
+plotRealization(randSim, thetas = thetas, kseq = kseq, cols = cols,
+                kaps = c(1, 41, 81), ind = real)
+dev.off()
+
+
 ## repeat this process many times to compare bias...
 muMat <- sdMat <- matrix(nrow = nsim, ncol = ngroup)
 nMat <- matrix(nrow = nsim, ncol = ngroup)
@@ -175,71 +309,6 @@ for (ii in 1:nsim) {
 ## compute the mini-max kappa on each repetition
 minimax <- apply(apply(poolMat, c(1,2), max), 1, which.min)
 minpool <- apply(poolMat, c(1,3), min)
-
-## plot a realization
-cols <- RColorBrewer::brewer.pal(4, "Dark2")
-real <- sample(1:nsim, 1) # 80
-png("metaPoolCurves.png", width = 5, height = 3, res = 480,
-    units = "in")
-narrowPlot(xgrid = seq(-2, 2, by = 1), ygrid = seq(0, 1, by = 0.2),
-           xlab = expression(hat(theta)),
-           ylab = expression(paste("chi(", bold(p), ";", kappa, ")")),
-           addGrid = FALSE)
-lines(thetas,  minpool[real, ], type = 'l',
-      col = adjustcolor(cols[4], 0.8))
-      ##poolMat[real, minimax[real], ], type = 'l',
-for (ii in c(1, 41, 81)) lines(thetas, poolMat[real,ii,], type = 'l',
-                         col = if (ii <= 40) adjustcolor(cols[1], 0.8) else if (ii == 41) adjustcolor(cols[2], 0.8) else adjustcolor(cols[3], 0.8))
-                                        #lwd = if (log(kseq)[ii] == 0) 2 else 1)
-#lines(thetas, poolMat[real,81,], col = adjustcolor(cols[3], 0.8))
-abline(v = 0, col = adjustcolor("black", 0.8), lty = 2, lwd = 1)
-abline(v = mean(muMat[real,]), col = adjustcolor("black", 0.6), lwd = 1)
-abline(v = muMat[real,], col = adjustcolor("gray50", 0.4))
-abline(h = 0.05, lty = 3)
-legend(x = "topleft", legend = c(round(log(kseq[c(1, 41, 81)], 10),
-                                       1), "Min"),
-       lty = 1, col = cols, cex = 0.8,
-       title = expression(paste(log[10], "(", kappa, ")")))
-dev.off()
-
-## 80, 120, 240, 280, 329, 973, 709
-
-## coverage probabilities, estimates for a range of cutoffs
-safeRange <- function(x) {
-    if (length(x) == 0) {
-        c(NA, NA)
-    } else range(x)
-}
-##cutoffs <- minQuants[c("0.1%", "1%", "5%", "10%"), "100"]
-cutoffs <- c(0.1, 0.05, 0.02, 0.01, 0.005)
-poolTheta <- matrix(thetas[apply(poolMat, c(1,2), which.max)],
-                    ncol = length(kseq))
-poolIntervals <- lapply(cutoffs,
-                        function(ct) apply(poolMat >= ct, c(1,2),
-                                           function(x) {
-                                               safeRange(thetas[which(x)])
-                                           }))
-poolInclude <- lapply(poolIntervals,
-                      function(mat) mat[1,,] <= mn & mat[2,,] >= mn)
-poolCovP <- lapply(poolInclude,
-                   function(mat) apply(mat, 2, mean, na.rm = TRUE))
-## using the mean
-meanTheta <- apply(muMat, 1, mean)
-meansd <- sqrt(apply(sdMat^2*nMat*(nMat-1), 1, sum)/(npop-1))/sqrt(npop)
-meanInt <- cbind(meanTheta - qnorm(0.975)*meansd,
-                 meanTheta + qnorm(0.975)*meansd)
-meanCovP <- mean(meanInt[,1] <= mn & meanInt[,2] >= mn)
-## using the minimum
-minTheta <- sapply(1:nsim, function(ii) poolTheta[ii, minimax[ii]])
-minInterval <- lapply(poolIntervals,
-                      function(ints) {
-                          sapply(1:nsim,
-                                 function(ii) {
-                                     ints[, ii, minimax[ii]]
-                                 })})
-minInclude <- lapply(minInterval,
-                     function(mat) mat[1,] <= mn & mat[2,] >= mn)
-minCovP <- lapply(minInclude, mean, na.rm = TRUE)
 
 ## plot the coverage probabilities by kappa
 ctind <- 2
