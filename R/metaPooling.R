@@ -111,7 +111,7 @@ simEvidentialRegion <- function(genFn, nsim = 1e3, npop = 104,
     nMat <- matrix(nrow = nsim, ncol = ngroup)
     pMat <- array(dim = c(nsim, ngroup, length(thetas)))
     poolMat <- array(dim = c(nsim, length(kseq), length(thetas)))
-    pfun <- function(q, ...) pt(q, df = (npop/ngroup)-1, ...)
+    pfun <- function(q, ...) pnorm(q, ...)
     for (ii in 1:nsim) {
         sim <- genFn(npop, ngroup) # generate data using genFun
         group <- sim[, "group"]
@@ -130,6 +130,7 @@ simEvidentialRegion <- function(genFn, nsim = 1e3, npop = 104,
     minimax <- apply(apply(poolMat, c(1,2), max), 1, which.min)
     ## and the minimum over kappa for each repetition
     minpool <- apply(poolMat, c(1,3), min)
+    ## return everything
     list(muMat = muMat, sdMat = sdMat,
          nMat = nMat, pMat = pMat, poolMat = poolMat,
          minimax = minimax, minKappa = minpool)
@@ -144,8 +145,7 @@ safeRange <- function(x) {
 
 ## use a simulation and compute coverage probabilities, etc.
 getCoverage <- function(sim, thetas, kseq,
-                        cutoffs = c(0.1, 0.05, 0.02, 0.01,
-                                    0.005)) {
+                        cutoffs = c(0.1, 0.05, 0.02, 0.01, 0.005)) {
     poolTheta <- matrix(thetas[apply(sim$poolMat, c(1,2),
                                      which.max)],
                         ncol = length(kseq))
@@ -161,19 +161,35 @@ getCoverage <- function(sim, thetas, kseq,
                           function(mat) mat[1,,] <= mn & mat[2,,] >= mn)
     poolCovP <- lapply(poolInclude,
                        function(mat) apply(mat, 2, mean, na.rm = TRUE))
-    ## using the mean
-    meanTheta <- apply(sim$muMat, 1, mean)
-    meansd <- sqrt(apply(sdMat^2*nMat*(nMat-1), 1,
-                         sum)/(npop-1))/sqrt(npop)
+    ## using the mean and the classic combination function
+    meanTheta <- apply(sim$muMat*sim$sdMat^(-2), 1, sum)/
+        rowSums(sim$sdMat^(-2))
+    meansd <- sqrt(1/rowSums(sim$sdMat^(-2)))
+    #meansd <- sqrt(apply(sdMat^2*nMat*(nMat-1), 1,
+    #                     sum)/(npop-1))/sqrt(npop)
     meanInt <- cbind(meanTheta - qnorm(0.975)*meansd,
                      meanTheta + qnorm(0.975)*meansd)
     meanCovP <- mean(meanInt[,1] <= mn & meanInt[,2] >= mn)
+    ## the minimum theta
+    minTheta <- thetas[apply(sim$minKappa, 1, which.max)]
+    minInt <-  lapply(cutoffs,
+                      function(ct) {
+                          apply(sim$minKappa >= ct,
+                                1,
+                                function(x) {
+                                    safeRange(thetas[which(x)])
+                                })
+                      })
+    minCovP <- lapply(minInt,
+                      function(mat) mean(mat[1,] <= mn &
+                                         mat[2,] >= mn,
+                                         na.rm = TRUE))
     ## return everything
     list(poolTheta = poolTheta, poolIntervals = poolIntervals,
          poolInclude = poolInclude, poolCovP = poolCovP,
          meanTheta = meanTheta, meansd = meansd, meanInt = meanInt,
-         meanCovP = meanCovP, minTheta = minTheta,
-         minInterval = min)
+         meanCovP = meanCovP, minTheta = minTheta, minInt = minInt,
+         minCovP = minCovP)
 }
 
 ## plot a realization based on the simulated data
@@ -184,9 +200,9 @@ plotRealization <- function(sims, thetas, kseq,
     lines(thetas,  sims$minKappa[ind, ], type = 'l',
           col = adjustcolor(cols[4], 0.8))
     for (ii in kaps) lines(thetas, sims$poolMat[ind,ii,], type = 'l',
-                           col = if (ii <= 40) {
+                           col = if (ii <= refKap-1) {
                                      adjustcolor(cols[1], 0.8)
-                                 } else if (ii == 41) {
+                                 } else if (ii == refKap) {
                                      adjustcolor(cols[2], 0.8)
                                  } else adjustcolor(cols[3], 0.8))
     abline(v = 0, col = adjustcolor("black", 0.8), lty = 2, lwd = 1)
@@ -207,33 +223,107 @@ mn <- 0
 std <- 2
 nsim <- 1000
 ngroup <- 8
-npop <- 104
+npop <- 240
 minQuants <- readRDS("curveMinQuantiles.Rds")
-kseq <- exp(seq(-8, 8, by = 0.2))
-thetas <- seq(-2.5, 2.5, by = 0.01)
+kseq <- exp(seq(-8, 8, by = 0.1))
+thetas <- seq(-1.5, 1.5, by = 0.01)
+cols <- RColorBrewer::brewer.pal(4, "Dark2")
+cutoffs <- seq(0.20, 0.01, by = -0.01)
 
 ## FIXED EFFECTS ##
 fixedGen <- function(np, ng) fixedNormal(np, ng,
                                          sd = std)
 set.seed(9381278)
-fixedSim <- simEvidentialRegion(fixedGen, nsim = nsim, kseq = kseq,
+fixedSim <- simEvidentialRegion(fixedGen, nsim = nsim, npop = npop,
+                                ngroup = ngroup, kseq = kseq,
                                 thetas = thetas)
+## compute intervals and coverage probabilities
+fixedInts <- getCoverage(fixedSim, thetas = thetas, kseq = kseq,
+                         cutoffs = cutoffs)
+
+## plot estimates by kappa
+png("metaEstFixed.png", width = 3, height = 3, res = 480,
+    units = "in")
+narrowPlot(xgrid = seq(-3, 3, by = 1.5),
+           ygrid = seq(-0.5, 0.5, by = 0.25),
+           xlab = expression(paste(log[10], "(", kappa, ")")),
+           xlim = c(-3.5, 3.5), ylim = c(-0.55, 0.55),
+           ylab = "Error")
+addQuantPoly(t(fixedInts$poolTheta), kseq = kseq, cex = 0.6)
+lines(log(kseq, 10), colMeans(fixedInts$poolTheta, na.rm = TRUE),
+      lty = 2, col = "firebrick")
+abline(h = quantile(fixedInts$meanTheta, c(0.025, 0.25, 0.75, 0.975)),
+       lty = 3)
+dev.off()
+
+## plot the coverage probabilities by kappa
+ctind <- 20
+cutoff <- cutoffs[ctind]
+png(paste0("meta", 100*cutoff, "pctCovPFix.png"), width = 2.5,
+    height = 2.5, res = 480, units = "in")
+tempCovP <- lowess(fixedInts$poolCovP[[ctind]], f = 1/6)$y
+tempCovP <- fixedInts$poolCovP[[ctind]]
+narrowPlot(xgrid = seq(-3, 3, by = 3), ygrid = seq(0.8, 1, by = 0.05),
+           ylab = "Coverage probability", xlim = c(-3.5, 3.5),
+           xlab = expression(paste(log[10], "(", kappa, ")")))
+lines(log(kseq, 10), tempCovP)
+points(log(kseq, 10), tempCovP, cex = 0.5)
+polygon(c(log(kseq, 10), rev(log(kseq, 10))),
+        c(tempCovP + qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim),
+          rev(tempCovP - qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim))),
+        col = adjustcolor("gray80", 0.5), border = NA)
+abline(h = 1 - cutoff, lty = 2)
+abline(v = log(2,10))
+abline(h = 1 - cutoff/2, lty = 2, col = "firebrick")
+dev.off()
+
+## plot all intervals for a particular kappa
+ctind <- 11
+cutoff <- cutoffs[ctind]
+kapInd <- 88 # 88  for Fisher's
+pltMat <- fixedInts$poolIntervals[[ctind]][,,kapInd]
+##pltMat <- t(fixedInts$meanInt[order(fixedInts$meanInt[,1]),])
+pltMat <- pltMat[, order(pltMat[1, ])]
+png(paste0("poolInts", 100*cutoff, "pctFixed.png"), height = 2.5,
+    width = 2.5, res = 480, units = "in")
+narrowPlot(xgrid = seq(-1, 1, by = 0.5), ygrid = seq(0, 1000, by = 200),
+           ylab = "Interval", xlab = "Bounds")
+abline(v = 0)
+for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
+                         col = adjustcolor("black", 0.2))
+abline(h = nsim*(1 - cutoff), lty = 2)
+dev.off()
+
+## check level of implicit test
+kapInd <- 81
+levels <- lapply(fixedInts$poolIntervals,
+                 function(el) apply(el, 3,
+                                    function(mat) mean(is.na(mat))))
+kapLevs <- sapply(levels, function(vec) vec[kapInd])
+plot(cutoffs, kapLevs)
+for (ii in 1:length(cutoffs)) {
+    lines(rep(cutoffs[ii], 2),
+          kapLevs[ii] +
+          c(-1,1)*1.96/sqrt(nsim)*sqrt(kapLevs[ii]*(1 - kapLevs[ii])))
+}
+abline(a = 0, b = 1)
 
 ## plot a realization
-cols <- RColorBrewer::brewer.pal(4, "Dark2")
 real <- sample(1:nsim, 1)
-png("metaPoolCurves.png", width = 5, height = 3, res = 480,
+png("metaPoolCurvesFixed.png", width = 5, height = 3, res = 480,
     units = "in")
-narrowPlot(xgrid = seq(-2, 2, by = 1), ygrid = seq(0, 1, by = 0.2),
-           xlab = expression(hat(theta)),
+narrowPlot(xgrid = seq(-1.5, 1.5, by = 0.5),
+           ygrid = seq(0, 1, by = 0.2),
+           xlab = expression(x),
            ylab = expression(paste("chi(", bold(p), ";", kappa, ")")),
            addGrid = FALSE)
 plotRealization(fixedSim, thetas = thetas, kseq = kseq, cols = cols,
-                kaps = c(1, 41, 81), ind = real)
+                kaps = c(1, 81, 161), ind = real, refKap = 81)
 dev.off()
 
-## 786
-## 80, 120, 240, 280, 329, 973, 709
+## reject homogeneity: 19
+## separation of curves: 55, 79
+
 
 ## RANDOM EFFECTS ##
 mnsd <- 1
@@ -242,11 +332,39 @@ randGen <- function(np, ng) randomNormal(np, ng, mnsd = mnsd,
 set.seed(8251506)
 randSim <- simEvidentialRegion(randGen, nsim = nsim, kseq = kseq,
                                thetas = thetas)
+## compute intervals and coverage probabilities
+randInts <- getCoverage(randSim, thetas = thetas, kseq = kseq,
+                        cutoffs = cutoffs)
+
+## plot estimates by kappa
+png("metaEstRandom.png", width = 3, height = 3, res = 480,
+    units = "in")
+narrowPlot(xgrid = seq(-3, 3, by = 1.5),
+           ygrid = seq(-1.5, 1.5, by = 0.75),
+           xlab = expression(paste(log[10], "(", kappa, ")")),
+           xlim = c(-3.5, 3.5), #ylim = c(-0.55, 0.55),
+           ylab = "Error")
+addQuantPoly(t(randInts$poolTheta), kseq = kseq, cex = 0.6)
+lines(log(kseq, 10), colMeans(randInts$poolTheta, na.rm = TRUE),
+      lty = 2)
+abline(h = quantile(randInts$meanTheta, c(0.025, 0.25, 0.75, 0.975)),
+       lty = 3)
+dev.off()
+
+## plot all intervals for a particular kappa
+kapInd <- 161 # 88  for Fisher's
+pltMat <- randInts$poolIntervals[[ctind]][,,kapInd]
+##pltMat <- t(fixedInts$meanInt[order(fixedInts$meanInt[,1]),])
+pltMat <- pltMat[, order(pltMat[1, ])]
+narrowPlot(xgrid = seq(-1, 1, by = 0.5), ygrid = seq(0, 1000, by = 200),
+           ylab = "Interval", xlab = "Bounds")
+for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
+                         col = adjustcolor("black", 0.5))
+abline(h = nsim*(1 - cutoff), lty = 2)
 
 ## plot a realization
-cols <- RColorBrewer::brewer.pal(4, "Dark2")
 real <- sample(1:nsim, 1)
-png("metaPoolCurves.png", width = 5, height = 3, res = 480,
+png("metaPoolCurvesRandom.png", width = 5, height = 3, res = 480,
     units = "in")
 narrowPlot(xgrid = seq(-1, 1, by = 0.5),
            ygrid = seq(0, 1, by = 0.2),
@@ -259,94 +377,6 @@ dev.off()
 
 ## 1, 5, 29, 41
 
-## INHOMOGENEOUS CASE ##
-mns <- rnorm(ngroup, sd = mnsd)
-inhom <- function(np, ng) inhomNormal(np, ng, mns = mns,
-                                      sd = sqrt(std^2 - mnsd^2))
-set.seed(16162023)
-inhomSim <- simEvidentialRegion(inhom, nsim = nsim, kseq = kseq,
-                                thetas = thetas)
-
-## plot a realization
-cols <- RColorBrewer::brewer.pal(4, "Dark2")
-real <- sample(1:nsim, 1)
-png("metaPoolCurves.png", width = 5, height = 3, res = 480,
-    units = "in")
-narrowPlot(xgrid = seq(-1, 1, by = 0.5),
-           ygrid = seq(0, 1, by = 0.2),
-           xlab = expression(x),
-           ylab = expression(paste("chi(", bold(p), ";", kappa, ")")),
-           addGrid = FALSE)
-plotRealization(randSim, thetas = thetas, kseq = kseq, cols = cols,
-                kaps = c(1, 41, 81), ind = real)
-dev.off()
-
-
-## repeat this process many times to compare bias...
-muMat <- sdMat <- matrix(nrow = nsim, ncol = ngroup)
-nMat <- matrix(nrow = nsim, ncol = ngroup)
-pMat <- array(dim = c(nsim, ngroup, length(thetas)))
-poolMat <- array(dim = c(nsim, length(kseq), length(thetas)))
-set.seed(9381278)
-for (ii in 1:nsim) {
-    ## start with simulated data
-    obs <- rnorm(npop, mean = mn, sd = std)
-    ## randomly split
-    group <- sample(rep(1:ngroup, times = npop/ngroup))
-    #group <- sample(c(sample(1:ngroup),
-    #                  sample(1:ngroup, npop - ngroup, replace = TRUE)))
-    nMat[ii,] <- table(group)
-    ## get means and sds from split groups
-    muMat[ii,] <- mus <- tapply(obs, group, mean)
-    ## get sds from split groups
-    sdMat[ii,] <- sds <- tapply(obs, group, sd)/sqrt(table(group))
-    ## simulated p-values
-    pMat[ii,,] <- simps <- t(paramSweep(mus, sds, thetas))
-    ## the pooled p-value curves
-    poolMat[ii,,] <- simpool <- t(kappaSweep(simps, kseq = kseq))
-    if ((ii %% 10) == 0) cat("\r Done ", ii, " of ", nsim)
-}
-## compute the mini-max kappa on each repetition
-minimax <- apply(apply(poolMat, c(1,2), max), 1, which.min)
-minpool <- apply(poolMat, c(1,3), min)
-
-## plot the coverage probabilities by kappa
-ctind <- 2
-cutoff <- cutoffs[ctind]
-png(paste0("meta", 100*cutoff, "pctCovP.png"), width = 3, height = 3,
-    res = 480, units = "in")
-tempCovP <- lowess(poolCovP[[ctind]], f = 1/6)$y
-narrowPlot(xgrid = seq(-3, 3, by = 3), ygrid = seq(0.8, 1, by = 0.05),
-           ylab = "Coverage probability", xlim = c(-3.5, 3.5),
-           xlab = expression(paste(log[10], "(", kappa, ")")))
-lines(log(kseq, 10), tempCovP)
-polygon(c(log(kseq, 10), rev(log(kseq, 10))),
-        c(tempCovP + qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim),
-          rev(tempCovP - qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim))),
-        col = adjustcolor("gray80", 0.5), border = NA)
-abline(h = 1 - cutoff, lty = 2)
-dev.off()
-
-## plot estimates by kappa
-png("metaEstimates.png", width = 3, height = 3, res = 480,
-    units = "in")
-narrowPlot(xgrid = seq(-3, 3, by = 1.5), ygrid = seq(-1, 1, by = 0.5),
-           xlab = expression(paste(log[10], "(", kappa, ")")),
-           xlim = c(-3.5, 3.5),
-           ylab = "Error")
-addQuantPoly(t(poolTheta), kseq = kseq, cex = 0.6)
-dev.off()
-
-## plot all intervals for a particular kappa
-kapInd <- 45
-pltMat <- poolIntervals[[ctind]][,,kapInd] # t(meanInt[order(meanInt[,1]),])
-pltMat <- pltMat[, order(pltMat[1, ])]
-plot(NA, xlim = range(pltMat, na.rm = TRUE), ylim = c(1, nsim),
-     ylab = "Interval", xlab = "Bounds")
-abline(h = seq(0, 1000, by = 200), v = seq(-1, 1, by = 0.5),
-       col = "gray80")
-for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
-                         col = adjustcolor("black", 0.5))
 
 ## 2 might be best... include it specifically
 ## get max intervals, compare classic interval to the evidence interval
