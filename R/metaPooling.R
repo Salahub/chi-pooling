@@ -107,17 +107,11 @@ randomNormal <- function(npop, ngroup, mn = 0, mnsd = 1,
     cbind(x = obs, group = grp)
 }
 
-## clean up code by defining the simulation loop here
-simEvidentialRegion <- function(genFn, nsim = 1e3, npop = 104,
-                                ngroup = 8,
-                                kseq = seq(-8, 8, by = 0.2),
-                                thetas = seq(-2.5, 2.5, by = 0.01)) {
+## wrapper to generate meta-analysis results
+simMetaStudies <- function(genFn, nsim = 1e3, npop = 240,
+                           ngroup = 8) {
     muMat <- sdMat <- matrix(nrow = nsim, ncol = ngroup)
     nMat <- matrix(nrow = nsim, ncol = ngroup)
-    pMat <- array(dim = c(nsim, ngroup, length(thetas)))
-    poolMat <- array(dim = c(nsim, length(kseq), length(thetas)))
-    pwgtMat <- matrix(nrow = nsim, ncol = length(thetas))
-    pfun <- function(q, ...) pnorm(q, ...)
     for (ii in 1:nsim) {
         sim <- genFn(npop, ngroup) # generate data using genFun
         group <- sim[, "group"]
@@ -125,31 +119,58 @@ simEvidentialRegion <- function(genFn, nsim = 1e3, npop = 104,
         nMat[ii,] <- table(group) # counts by group
         muMat[ii,] <- tapply(obs, group, mean) # means
         sdMat[ii,] <- tapply(obs, group, sd)/sqrt(table(group)) # sds
-        pMat[ii,,] <- simps <- t(paramSweep(muMat[ii,], sdMat[ii,],
-                                            thetas,
-                                            pfun = pfun)) # p-vals
-        poolMat[ii,,] <- t(kappaSweep(simps, np = ngroup,
-                                      kseq = kseq)) # pooled vals
-        pwgtMat[ii,] <- apply(simps,
-                              2,
-                              function(ps) {
-                                  pchisq(sum(qchisq(ps,
-                                                    df = 1/sdMat[ii,]^2,
-                                      lower.tail = FALSE)),
-                                      df = sum(1/sdMat[ii,]^2),
-                                      lower.tail = FALSE)
-                              })
-        if ((ii %% 10) == 0) cat("\r Done ", ii, " of ", nsim)
+        if ((ii %% 10) == 0) cat("\r Generated ", ii, " of ", nsim)
     }
-    ## compute the mini-max kappa for each repetition
-    minimax <- apply(apply(poolMat, c(1,2), max), 1, which.min)
-    ## and the minimum over kappa for each repetition
-    minpool <- apply(poolMat, c(1,3), min)
-    ## return everything
-    list(muMat = muMat, sdMat = sdMat,
-         nMat = nMat, pMat = pMat, poolMat = poolMat,
-         minimax = minimax, minKappa = minpool,
-         wgtdPool= pwgtMat)
+    list(means = muMat, sds = sdMat, ns = nMat)
+}
+
+## convert meta-analyses to p-values based on a probability function
+metaToP <- function(pfun, studies, thetas) {
+    simplify2array(lapply(thetas,
+                          function(x) {
+                              pfun(x, studies$means, studies$sds,
+                                   studies$ns)
+                          }))
+}
+
+## the t and normal pfuns
+pfunNorm <- function(x, mus, sds, ns) {
+    2*pnorm(-abs(mus - x)/sds)
+}
+pfunT <- function(x, mus, sds, ns) {
+    2*pt(-abs(mus - x)/sds, df = ns - 1)
+}
+
+## convert p-values to chi pool estimates for a range of kappa
+chiMetaSweep <- function(ps, kseq = exp(seq(-8, 8, by = 0.1))) {
+    K <- dim(ps)[2]
+    simplify2array(lapply(
+        kseq,
+        function(k) {
+            pchisq(apply(qchisq(testp, k, lower.tail = FALSE),
+                         c(1,3), sum),
+                   df = K*k, lower.tail = FALSE)
+        }))
+}
+
+## weighted chi computation
+chiWeighted <- function(ps, studies) {
+    vs <- studies$sds
+    K <- nrow(vs)
+    wgts <- 1/vs^2
+    t(sapply(1:nrow(wgts),
+           function(ii) {
+               pmat <- ps[ii,,]
+               pchisq(apply(pmat, 2,
+                            function(col) {
+                                sum(qchisq(col,
+                                           df = 2*K*(wgts[ii,]/
+                                                     sum(wgts[ii,])),
+                                           lower.tail = FALSE))
+                            }),
+                      df = 2*K,
+                      lower.tail = FALSE)
+           }))
 }
 
 ## safe estimates for a range of cutoffs
@@ -157,6 +178,33 @@ safeRange <- function(x) {
     if (length(x) == 0) {
         c(NA, NA)
     } else range(x)
+}
+
+## compute coverage probabilities for a given sequence of chis
+getChiEsts <- function(chiseqs, thetas, kseq, mn = 0,
+                       cutoffs = c(0.1, 0.05, 0.02, 0.01)) {
+    ests <- matrix(thetas[apply(chiseqs, c(1,2),
+                                     which.max)],
+                     ncol = length(kseq))
+    intervals <- lapply(cutoffs,
+                        function(ct) {
+                            apply(chiseqs >= ct,
+                                  c(1,2),
+                                  function(x) {
+                                      safeRange(thetas[which(x)])
+                                  })
+                        })
+    include <- lapply(intervals,
+                      function(mat) mat[1,,] <= mn & mat[2,,] >= mn)
+    covP <- lapply(include,
+                   function(mat) apply(mat, 2, mean, na.rm = TRUE))
+    list(ests = ests, intervals = intervals, covP = covP)
+}
+
+## and something for univariate estimates
+getUniEsts <- function(seqs, thetas, kseq, mn = 0,
+                       cutoffs = c(0.1, 0.05, 0.02, 0.01)) {
+
 }
 
 ## use a simulation and compute coverage probabilities, etc.
@@ -358,8 +406,8 @@ dev.off()
 
 
 ## FIXED EFFECTS UNBALANCED ##
-fixedGenUB <- function(np, ng) fixedNormalUB(np, ,
-                                             sd = std)
+#fixedGenUB <- function(np, ng) fixedNormalUB(np, ,
+#                                             sd = std)
 set.seed(9381278)
 fixedSim <- simEvidentialRegion(fixedGen, nsim = nsim, npop = npop,
                                 ngroup = ngroup, kseq = kseq,
