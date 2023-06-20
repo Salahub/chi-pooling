@@ -555,47 +555,6 @@ for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
 abline(h = nsim*(1 - cutoff), lty = 2)
 dev.off()
 
-## which samples give the greatest disagreement between classic and
-## evidential intervals?
-classLens <- meanInt[,2] - meanInt[,1]
-poolLens <- apply(poolIntervals[[ctind]][,,kapInd], 2, diff)
-plot(classLens, poolLens,
-     pch = as.numeric(poolInclude[[ctind]][,kapInd]),
-     col = as.numeric(meanInt[,1] <= mn & meanInt[,2] >= mn) + 1)
-abline(a = 0, b = 1)
-
-
-## RATIOS OF MEAN TO POOL ##
-## ratios
-lenRat <- poolLens/classLens
-## get the max and min examples
-lenRatSrt <- order(lenRat, na.last = FALSE)
-real <- lenRatSrt[15]
-## plot some of the NA cases
-narrowPlot(xgrid = seq(-2, 2, by = 1), ygrid = seq(0, 1, by = 0.2),
-           xlab = expression(hat(theta)),
-           ylab = expression(paste("chi(", bold(p), ";", kappa, ")")),
-           addGrid = FALSE)
-lines(thetas, poolMat[real, 45,], type = 'l',
-      col = adjustcolor(cols[2], 0.8))
-lines(thetas, poolMat[real, 10,], type = 'l',
-      col = adjustcolor(cols[1], 0.8))
-abline(v = 0, col = adjustcolor("black", 0.8), lty = 2, lwd = 1)
-abline(v = muMat[real,], col = adjustcolor("gray50", 0.4))
-included <- matrix(nrow = ngroup, ncol = length(thetas))
-for (ii in 1:ngroup) {
-    included[ii,] <- muMat[real, ii] + 1.96*sdMat[real, ii] >= thetas &
-        muMat[real, ii] - 1.96*sdMat[real, ii] <= thetas
-}
-allInclude <- apply(included, 2, sum)
-lines(thetas, allInclude/ngroup)
-abline(h = 0.05, lty = 3)
-legend(x = "topleft", legend = c(round(log(kseq[c(1, 41, 81)], 10),
-                                       1), "Min"),
-       lty = 1, col = cols, cex = 0.8,
-       title = expression(paste(log[10], "(", kappa, ")")))
-abline(v = c(meanInt[real, 1], meanInt[real, 2]))
-
 
 ## REAL DATA #########################################################
 library(metadat)
@@ -627,3 +586,76 @@ plot(xseq, curveWgtd, type = 'l')
 abline(v = ors$yi, col = adjustcolor("gray50", 0.5))
 meanEst <- sum(ors$yi*1/ors$vi)/sum(1/ors$vi)
 meanSE <- sqrt(1/sum(1/ors$vi))
+
+## school calendar data
+data(dat.konstantopoulos2011)
+schoolDat <- dat.konstantopoulos2011
+schoolDat$district <- factor(schoolDat$district)
+rm(dat.konstantopoulos2011)
+
+## plot the data
+schoolCol <- RColorBrewer::brewer.pal(11, "Set3")
+png("metaSchoolMeans.png", width = 3, height = 3, units = "in",
+    res = 480)
+narrowPlot(ygrid = seq(-1, 1, by = 0.5),
+           xgrid = seq(0, 12, by = 3),
+           ylab = "Mean difference", xlab = "District")
+points(unclass(as.factor(schoolDat$district)),
+       y = schoolDat$yi, pch = 20,
+       col = schoolCol[unclass(schoolDat$district)])
+for (ii in 1:nrow(schoolDat)) {
+    lines(rep(unclass(schoolDat$district)[ii], 2),
+          rep(schoolDat$yi[ii],2) +
+          c(-1.96, 1.96)*sqrt(schoolDat$vi[ii]),
+          col = schoolCol[unclass(schoolDat$district)[ii]])
+}
+dev.off()
+
+## sweep of values
+xseq <- seq(-2, 2, by = 0.01)
+pvals <- apply(qchisq(paramSweep(schoolDat$yi,
+                                 sqrt(schoolDat$vi),
+                                 thetas = xseq),
+                      2, lower.tail = FALSE), 1,
+               function(row) pchisq(sum(row), 2*nrow(schoolDat),
+                                    lower.tail = FALSE))
+## strong evidence of heterogeneity
+## pool by district
+schoolSplit <- split(schoolDat[, c("yi", "vi")],
+                     schoolDat$district)
+## pool for each district
+districtPools <- lapply(schoolSplit,
+                        function(sdat) {
+                            apply(qchisq(paramSweep(sdat$yi,
+                                 sqrt(sdat$vi),
+                                 thetas = xseq),
+                      2, lower.tail = FALSE), 1,
+               function(row) pchisq(sum(row), 2*nrow(sdat),
+                                    lower.tail = FALSE))
+                            })
+## do this one...super easy analysis
+
+## plot the data
+schoolCol <- RColorBrewer::brewer.pal(11, "Set3")
+png("metaSchoolIntervals.png", width = 3, height = 3, units = "in",
+    res = 480)
+narrowPlot(ygrid = seq(-1, 1, by = 0.5),
+           xgrid = seq(0, 12, by = 3),
+           ylab = "Mean difference", xlab = "District")
+points(unclass(as.factor(schoolDat$district)),
+       y = schoolDat$yi, pch = 20,
+       col = schoolCol[unclass(schoolDat$district)])
+for (ii in 1:nrow(schoolDat)) {
+    lines(rep(unclass(schoolDat$district)[ii], 2),
+          rep(schoolDat$yi[ii],2) +
+          c(-1.96, 1.96)*sqrt(schoolDat$vi[ii]),
+          col = schoolCol[unclass(schoolDat$district)[ii]])
+}
+for (ii in 1:length(districtPools)) {
+    temp <-  safeRange(xseq[(districtPools[[ii]] >= 0.05)])
+    tempch <- if (is.na(temp)[1]) 4 else 0
+    points(y = xseq[which.max(districtPools[[ii]])],
+           x = ii, pch = tempch)
+    lines(x = rep(ii, 2), y = temp)
+}
+dev.off()
