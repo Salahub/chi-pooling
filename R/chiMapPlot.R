@@ -279,7 +279,7 @@ maxProp <- sweep(sameMaxMask, c(1,2), caseMat, `/`)
 ## 4 4
 ## 8 8
 ## select indices by kappa
-kaps <- c(-6,6)
+kaps <- c(-8,-1.75)
 kapInd <- kapSeq <= kaps[2] & kapSeq >= kaps[1]
 if (!any(kapInd)) {
     kapInd <- logical(length(kapSeq))
