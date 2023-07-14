@@ -12,8 +12,10 @@ narrowPlot <- function(xgrid, ygrid, main = "", xlab = "", ylab = "",
     mtext(ylab, side = 2, line = 1, cex = 0.8) # ylab
     mtext(xlab, side = 1, line = 1, padj = 0, cex = 0.8) # xlab
     ## add grid lines
-    abline(h = ygrid, v = xgrid, lty = 1,
-           col = adjustcolor("gray", alpha.f = 0.4))
+    if (addGrid) {
+        abline(h = ygrid, v = xgrid, lty = 1,
+               col = adjustcolor("gray", alpha.f = 0.4))
+    }
     ## and ticks
     mtext(side = 1, at = xgrid, text = "|", line = 0, cex = 0.5,
           padj = -2)

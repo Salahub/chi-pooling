@@ -283,7 +283,7 @@ fixedGen <- function(np, ng) fixedNormal(np, ng,
 set.seed(9381278)
 fixedSim <- simMetaStudies(fixedGen, nsim = nsim, npop = npop,
                            ngroup = ngroup)
-fixedps <- metaToP(pfunNorm, fixedSim, thetas = thetas)
+fixedps <- metaToP(pfunT, fixedSim, thetas = thetas)
 fixedChis <- chiMetaSweep(fixedps, kseq = kseq)
 fixedMnChi <- apply(fixedChis, c(1,3), min)
 fixedwgtChi <- chiWeighted(fixedps, fixedSim)
@@ -303,12 +303,16 @@ narrowPlot(xgrid = seq(-3, 3, by = 1.5),
            ygrid = seq(-0.5, 0.5, by = 0.25),
            xlab = expression(paste(log[10], "(", kappa, ")")),
            xlim = c(-3.5, 3.5), ylim = c(-0.55, 0.55),
-           ylab = "Error")
+           ylab = expression(hat(theta)^{(E)}),
+           mars = c(2.1, 2.2, 1.1, 1.1))
 addQuantPoly(t(fixedChiInt$ests), kseq = kseq, cex = 0.6)
 lines(log(kseq, 10), colMeans(fixedChiInt$ests, na.rm = TRUE),
       lty = 2, col = "firebrick")
 abline(h = quantile(fixedMnInt$ests, c(0.025, 0.25, 0.75, 0.975)),
        lty = 3)
+mtext(c("0.95", "0.5"), at = quantile(fixedMnInt$ests,
+                                      c(0.025, 0.25)),
+      side = 4, cex = 0.6, las = 1)
 dev.off()
 
 ## compare mean estimates to kappa estimates
@@ -324,9 +328,8 @@ narrowPlot(xgrid = seq(-0.5, 0.5, by = 0.25),
 points(fixedChiInt$est[, kapInd], fixedMnInt$ests)
 dev.off()
 
-
 ## plot the coverage probabilities by kappa
-ctind <- 16
+ctind <- 20
 cutoff <- cutoffs[ctind]
 png(paste0("meta", 100*cutoff, "pctCovPFix.png"), width = 2.5,
     height = 2.5, res = 480, units = "in")
@@ -347,11 +350,11 @@ abline(h = 1 - cutoff/2, lty = 2, col = "firebrick")
 dev.off()
 
 ## plot all intervals for a particular kappa
-ctind <- 16
+ctind <- 20
 cutoff <- cutoffs[ctind]
 kapInd <- 88 # 88  for Fisher's
 pltMat <- fixedChiInt$intervals[[ctind]][,,kapInd]
-##pltMat <- t(fixedInts$meanInt[order(fixedInts$meanInt[,1]),])
+##pltMat <- t(fixedMnInt[order(fixedMnInt[,1]),])
 pltMat <- pltMat[, order(pltMat[1, ])]
 png(paste0("poolInts", 100*cutoff, "pctFixed.png"), height = 2.5,
     width = 2.5, res = 480, units = "in")
@@ -361,30 +364,58 @@ abline(v = 0)
 for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
                          col = adjustcolor("black", 0.2))
 abline(h = nsim*(1 - cutoff), lty = 2)
+abline(h = nsim*(1 - cutoff/2), lty = 2, col = "firebrick")
 dev.off()
 
 ## check level of implicit test
-kapInd <- 81
-levels <- lapply(fixedInts$poolIntervals,
+kapInd <- 88
+levels <- lapply(fixedChiInt$intervals,
                  function(el) apply(el, 3,
                                     function(mat) mean(is.na(mat))))
 kapLevs <- sapply(levels, function(vec) vec[kapInd])
-plot(cutoffs, kapLevs)
+png("metaRejectPFixed.png", width = 3, height = 3, res = 480,
+    units = "in")
+narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
+           ygrid = seq(0, 0.2, by = 0.05),
+           xlab = "a", ylab = expression(alpha))
+points(cutoffs, kapLevs)
 for (ii in 1:length(cutoffs)) {
     lines(rep(cutoffs[ii], 2),
-          kapLevs[ii] +
-          c(-1,1)*1.96/sqrt(nsim)*sqrt(kapLevs[ii]*(1 - kapLevs[ii])))
+          (kapLevs[ii] +
+           c(-1,1)*1.96/sqrt(nsim)*sqrt(kapLevs[ii]*(1 - kapLevs[ii]))),
+          col = "gray50")
 }
 abline(a = 0, b = 1)
+abline(a = 0, b = 0.5, lty = 3)
+dev.off()
+
+## check coverage probabilities for a particular kappa
+kapInd <- 88
+png("metaCovPFixed.png", width = 3, height = 3, res = 480,
+    units = "in")
+covPs <- sapply(fixedChiInt$covP, function(el) el[kapInd])
+narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
+           ygrid = seq(0, 0.2, by = 0.05),
+           xlab = "a", ylab = expression("2"~{(1-pi)}))
+points(cutoffs, 2*(1 - covPs))
+for (ii in 1:length(cutoffs)) {
+    lines(rep(cutoffs[ii], 2),
+          2*(1 - covPs[ii] +
+             c(-1,1)*1.96/sqrt(nsim)*sqrt(covPs[ii]*(1 - covPs[ii]))),
+          col = "gray50")
+}
+abline(a = 0, b = 1)
+dev.off()
 
 ## plot a realization
-real <- 86 # sample(1:nsim, 1)
+real <- 55 # sample(1:nsim, 1)
 png("metaPoolCurvesFixed.png", width = 5, height = 3, res = 480,
     units = "in")
 narrowPlot(xgrid = seq(-1, 1, by = 0.5),
-           ygrid = seq(0, 1, by = 0.2),
+           ygrid = seq(0, 0.6, by = 0.15),
            xlab = expression(x),
-           ylab = expression(paste("chi(", bold(p), ";", kappa, ")")),
+           ylab = expression(paste("chi(", bold(p), "(x)",
+                                   ";", kappa, ")")),
            addGrid = FALSE)
 plotRealization(chi = fixedChis, minchi = fixedMnChi,
                 means = fixedSim$means, meanEst = fixedMnInt$ests,
@@ -399,14 +430,14 @@ dev.off()
 ## FIXED EFFECTS UNBALANCED ##
 fixedGenUB <- function(np, ng) {
     grps <- sample(1:ng, size = np, replace = TRUE,
-                   prob = c(1, 3, 5, 2, 2, 2, 1, 4))
+                   prob = c(3, 3, 6, 2, 2, 2, 3, 4))
     fixedNormalUB(np, groups = grps, sd = std)
 }
 ## generate and compute on studies
-set.seed(1690323)
+set.seed(73183)
 ubSim <- simMetaStudies(fixedGenUB, nsim = nsim, npop = npop,
                         ngroup = ngroup)
-ubps <- metaToP(pfunNorm, ubSim, thetas = thetas)
+ubps <- metaToP(pfunT, ubSim, thetas = thetas)
 ubChis <- chiMetaSweep(ubps, kseq = kseq)
 ubMnChi <- apply(ubChis, c(1,3), min)
 ubwgtChi <- chiWeighted(ubps, ubSim)
@@ -436,12 +467,16 @@ narrowPlot(xgrid = seq(-3, 3, by = 1.5),
            ygrid = seq(-0.5, 0.5, by = 0.25),
            xlab = expression(paste(log[10], "(", kappa, ")")),
            xlim = c(-3.5, 3.5), ylim = c(-0.55, 0.55),
-           ylab = "Error")
+           ylab = expression(hat(theta)^{(E)}),
+           mar = c(2.1, 2.2, 1.1, 1.1))
 addQuantPoly(t(ubChiInt$ests), kseq = kseq, cex = 0.6)
 lines(log(kseq, 10), colMeans(ubChiInt$ests, na.rm = TRUE),
       lty = 2, col = "firebrick")
 abline(h = quantile(ubMnInt$ests, c(0.025, 0.25, 0.75, 0.975)),
        lty = 3)
+mtext(c("0.95", "0.5"), at = quantile(ubMnInt$ests,
+                                      c(0.025, 0.25)),
+      side = 4, cex = 0.6, las = 1)
 #abline(h = quantile(ubWgtInt$ests, c(0.025, 0.25, 0.75, 0.975)),
 #       lty = 3, col = "firebrick")
 dev.off()
@@ -480,7 +515,7 @@ dev.off()
 ## plot all intervals for a particular kappa
 ctind <- 20
 cutoff <- cutoffs[ctind]
-kapInd <- 81 # 88  for Fisher's
+kapInd <- 88 # 88  for Fisher's
 pltMat <- ubChiInt$intervals[[ctind]][,,kapInd]
 ##pltMat <- ubWgtInt$intervals[[ctind]]
 ##pltMat <- t(fixedInts$meanInt[order(fixedInts$meanInt[,1]),])
@@ -493,6 +528,47 @@ abline(v = 0)
 for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
                          col = adjustcolor("black", 0.2))
 abline(h = nsim*(1 - cutoff), lty = 2)
+abline(h = nsim*(1 - cutoff/2), lty = 2, col = "firebrick")
+dev.off()
+
+## check level of implicit test
+kapInd <- 88
+levels <- lapply(ubChiInt$intervals,
+                 function(el) apply(el, 3,
+                                    function(mat) mean(is.na(mat))))
+kapLevs <- sapply(levels, function(vec) vec[kapInd])
+png("metaRejectPUB.png", width = 3, height = 3, res = 480,
+    units = "in")
+narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
+           ygrid = seq(0, 0.2, by = 0.05),
+           xlab = "a", ylab = expression(alpha))
+points(cutoffs, kapLevs)
+for (ii in 1:length(cutoffs)) {
+    lines(rep(cutoffs[ii], 2),
+          (kapLevs[ii] +
+           c(-1,1)*1.96/sqrt(nsim)*sqrt(kapLevs[ii]*(1 - kapLevs[ii]))),
+          col = "gray50")
+}
+abline(a = 0, b = 1)
+abline(a = 0, b = 0.5, lty = 3)
+dev.off()
+
+## check coverage probabilities for a particular kappa
+kapInd <- 88
+png("metaCovPUB.png", width = 3, height = 3, res = 480,
+    units = "in")
+covPs <- sapply(ubChiInt$covP, function(el) el[kapInd])
+narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
+           ygrid = seq(0, 0.2, by = 0.05),
+           xlab = "a", ylab = expression("2"~{(1-pi)}))
+points(cutoffs, 2*(1 - covPs))
+for (ii in 1:length(cutoffs)) {
+    lines(rep(cutoffs[ii], 2),
+          2*(1 - covPs[ii] +
+             c(-1,1)*1.96/sqrt(nsim)*sqrt(covPs[ii]*(1 - covPs[ii]))),
+          col = "gray50")
+}
+abline(a = 0, b = 1)
 dev.off()
 
 ## plot a realization
@@ -518,11 +594,14 @@ mnsd <- 1
 randGen <- function(np, ng) randomNormal(np, ng, mnsd = mnsd,
                                          sd = sqrt(std^2 - mnsd^2))
 set.seed(8251506)
-randSim <- simEvidentialRegion(randGen, nsim = nsim, kseq = kseq,
-                               thetas = thetas)
-## compute intervals and coverage probabilities
-randInts <- getCoverage(randSim, thetas = thetas, kseq = kseq,
-                        cutoffs = cutoffs)
+randSim <- simMetaStudies(randGen, nsim = nsim, npop = npop,
+                          ngroup = ngroup)
+randps <- metaToP(pfunT, randSim, thetas = thetas)
+randChis <- chiMetaSweep(randps, kseq = kseq)
+## get intervals
+randChiInt <- getChiEsts(randChis, thetas = thetas, kseq = kseq,
+                         cutoffs = cutoffs)
+randMnInt <- getMeanEsts(randSim, cutoffs = cutoffs)
 
 ## plot estimates by kappa
 png("metaEstRandom.png", width = 3, height = 3, res = 480,
@@ -532,16 +611,21 @@ narrowPlot(xgrid = seq(-3, 3, by = 1.5),
            xlab = expression(paste(log[10], "(", kappa, ")")),
            xlim = c(-3.5, 3.5), #ylim = c(-0.55, 0.55),
            ylab = "Error")
-addQuantPoly(t(randInts$poolTheta), kseq = kseq, cex = 0.6)
-lines(log(kseq, 10), colMeans(randInts$poolTheta, na.rm = TRUE),
+addQuantPoly(t(randChiInt$ests), kseq = kseq, cex = 0.6)
+lines(log(kseq, 10), colMeans(randChiInt$ests, na.rm = TRUE),
       lty = 2)
-abline(h = quantile(randInts$meanTheta, c(0.025, 0.25, 0.75, 0.975)),
+abline(h = quantile(randMnInt$ests, c(0.025, 0.25, 0.75, 0.975)),
        lty = 3)
+mtext(c("0.95", "0.5"),
+      at = quantile(randMnInt$ests, c(0.025, 0.25)),
+      side = 4, cex = 0.6, las = 1)
 dev.off()
 
 ## plot all intervals for a particular kappa
 kapInd <- 88 # 88  for Fisher's
-pltMat <- randInts$poolIntervals[[ctind]][,,kapInd]
+ctind <- 16
+cutoff <- cutoffs[ctind]
+pltMat <- randChiInt$intervals[[ctind]][,,kapInd]
 ##pltMat <- t(fixedInts$meanInt[order(fixedInts$meanInt[,1]),])
 pltMat <- pltMat[, order(pltMat[1, ])]
 png(paste0("poolInts", 100*cutoff, "pctRand.png"), height = 3,
@@ -555,6 +639,58 @@ for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
 abline(h = nsim*(1 - cutoff), lty = 2)
 dev.off()
 
+## 0.975 is the proportion of empty intervals
+## check for a range of sds
+mnsdSeq <- seq(0.1, 1.9, by = 0.1)
+## a list of closures with the correct variances
+randGens <- lapply(mnsdSeq,
+                   function(mnsd) {
+                       function(np, ng) {
+                           randomNormal(np, ng,
+                                        mnsd = mnsd,
+                                        sd = sqrt(std^2 - mnsd^2))
+                       }})
+## simulate for each
+set.seed(54910913)
+randSims <- lapply(randGens, simMetaStudies, nsim = nsim, npop = npop,
+                   ngroup = ngroup)
+randps <- lapply(randSims, metaToP, pfun = pfunT, thetas = thetas)
+randChis <- lapply(randps, chiMetaSweep, kseq = kseq[c(1,81,88,161)])
+## get intervals
+randChiInt <- lapply(randChis, getChiEsts, thetas = thetas,
+                     kseq = kseq[c(1,81,88,161)], cutoffs = cutoffs)
+## and rejection probabilities
+randRejectP <- lapply(randChiInt,
+                      function(ints) {
+                          lapply(ints$intervals,
+                                 function(mat) {
+                                     colMeans(is.na(mat[1,,]))
+                                 })})
+
+## for rejection rule >= 0.05, what does the power look like in tau?
+powers5cv <- sapply(randRejectP, function(lst) lst[[16]][2])
+powers5fis <- sapply(randRejectP, function(lst) lst[[16]][3])
+powers5sto <- sapply(randRejectP, function(lst) lst[[16]][4])
+powers5tip <- sapply(randRejectP, function(lst) lst[[16]][1])
+png(paste0("poolPowersRand.png"), height = 3.5,
+    width = 3, res = 480, units = "in")
+narrowPlot(xgrid = seq(0, 1, by = 0.25), ygrid = seq(0, 1, by = 0.25),
+           ylab = "Power", mars = c(3.5, 2.1, 1.1, 1.1))
+mtext(expression(frac(tau^2, tau^2 + s^2)), side = 1, line = 2.5,
+      cex = 0.8)
+points(mnsdSeq^2/4, powers5cv, col = cols[4], cex = 0.8)
+lines(mnsdSeq^2/4, powers5cv, col = cols[4])
+points(mnsdSeq^2/4, powers5fis, col = cols[2], cex = 0.8)
+lines(mnsdSeq^2/4, powers5fis, col = cols[2])
+points(mnsdSeq^2/4, powers5sto, col = cols[3], cex = 0.8)
+lines(mnsdSeq^2/4, powers5sto, col = cols[3])
+points(mnsdSeq^2/4, powers5tip, col = cols[1], cex = 0.8)
+lines(mnsdSeq^2/4, powers5tip, col = cols[1])
+legend(x = "bottomright", legend = c("-3.5", "0", "0.3", "3.5"),
+       lty = 1, pch = 1, col = cols[c(1,4,2,3)], cex = 0.8,
+       pt.cex = 0.8,
+       title = expression(paste(log[10], "(", kappa, ")")))
+dev.off()
 
 ## REAL DATA #########################################################
 library(metadat)
