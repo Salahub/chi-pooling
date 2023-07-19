@@ -325,7 +325,8 @@ narrowPlot(xgrid = seq(-0.5, 0.5, by = 0.25),
            ygrid = seq(-0.5, 0.5, by = 0.25),
            xlab = expression(hat(theta)^{"("~E~")"}),
            ylab = expression(hat(theta)))
-points(fixedChiInt$est[, kapInd], fixedMnInt$ests)
+points(fixedChiInt$est[, kapInd], fixedMnInt$ests, cex = 0.5, pch = 19,
+       col = adjustcolor("black", 0.3))
 dev.off()
 
 ## plot the coverage probabilities by kappa
@@ -336,10 +337,10 @@ png(paste0("meta", 100*cutoff, "pctCovPFix.png"), width = 2.5,
 tempCovP <- lowess(fixedChiInt$covP[[ctind]], f = 1/6)$y
 tempCovP <- fixedChiInt$covP[[ctind]]
 narrowPlot(xgrid = seq(-3, 3, by = 3), ygrid = seq(0.8, 1, by = 0.05),
-           ylab = "Coverage probability", xlim = c(-3.5, 3.5),
+           ylab = expression(pi), xlim = c(-3.5, 3.5),
            xlab = expression(paste(log[10], "(", kappa, ")")))
 lines(log(kseq, 10), tempCovP)
-points(log(kseq, 10), tempCovP, cex = 0.5)
+#points(log(kseq, 10), tempCovP, cex = 0.5)
 polygon(c(log(kseq, 10), rev(log(kseq, 10))),
         c(tempCovP + qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim),
           rev(tempCovP - qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim))),
@@ -350,7 +351,7 @@ abline(h = 1 - cutoff/2, lty = 2, col = "firebrick")
 dev.off()
 
 ## plot all intervals for a particular kappa
-ctind <- 20
+ctind <- 11
 cutoff <- cutoffs[ctind]
 kapInd <- 88 # 88  for Fisher's
 pltMat <- fixedChiInt$intervals[[ctind]][,,kapInd]
@@ -364,7 +365,7 @@ abline(v = 0)
 for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
                          col = adjustcolor("black", 0.2))
 abline(h = nsim*(1 - cutoff), lty = 2)
-abline(h = nsim*(1 - cutoff/2), lty = 2, col = "firebrick")
+#abline(h = nsim*(1 - cutoff/2), lty = 2, col = "firebrick")
 dev.off()
 
 ## check level of implicit test
@@ -373,37 +374,48 @@ levels <- lapply(fixedChiInt$intervals,
                  function(el) apply(el, 3,
                                     function(mat) mean(is.na(mat))))
 kapLevs <- sapply(levels, function(vec) vec[kapInd])
-png("metaRejectPFixed.png", width = 3, height = 3, res = 480,
+png("metaRejectPFixed.png", width = 2.5, height = 2.5, res = 480,
     units = "in")
 narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
            ygrid = seq(0, 0.2, by = 0.05),
            xlab = "a", ylab = expression(alpha))
-points(cutoffs, kapLevs)
-for (ii in 1:length(cutoffs)) {
-    lines(rep(cutoffs[ii], 2),
-          (kapLevs[ii] +
-           c(-1,1)*1.96/sqrt(nsim)*sqrt(kapLevs[ii]*(1 - kapLevs[ii]))),
-          col = "gray50")
-}
+points(cutoffs, kapLevs, cex = 0.8)
+#for (ii in 1:length(cutoffs)) {
+#    lines(rep(cutoffs[ii], 2),
+#          (kapLevs[ii] +
+#           c(-1,1)*1.96/sqrt(nsim)*sqrt(kapLevs[ii]*(1 - kapLevs[ii]))),
+#          col = "gray50")
+#}
 abline(a = 0, b = 1)
-abline(a = 0, b = 0.5, lty = 3)
+alphaA <- lm(alpha ~ a + I(a^2) - 1,
+             data = data.frame(alpha = kapLevs, a = cutoffs))
+lines(seq(0, 0.2, by = 0.01),
+      predict(alphaA,
+              newdata = data.frame(a = seq(0, 0.2, by = 0.01))),
+      col = "firebrick")
+#abline(a = 0, b = 0.5, lty = 3)
 dev.off()
 
 ## check coverage probabilities for a particular kappa
 kapInd <- 88
-png("metaCovPFixed.png", width = 3, height = 3, res = 480,
+png("metaCovPFixed.png", width = 2.5, height = 2.5, res = 480,
     units = "in")
 covPs <- sapply(fixedChiInt$covP, function(el) el[kapInd])
 narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
            ygrid = seq(0, 0.2, by = 0.05),
-           xlab = "a", ylab = expression("2"~{(1-pi)}))
-points(cutoffs, 2*(1 - covPs))
-for (ii in 1:length(cutoffs)) {
-    lines(rep(cutoffs[ii], 2),
-          2*(1 - covPs[ii] +
-             c(-1,1)*1.96/sqrt(nsim)*sqrt(covPs[ii]*(1 - covPs[ii]))),
-          col = "gray50")
-}
+           xlab = "a", ylab = expression({1-pi}))
+points(cutoffs, 1 - covPs, cex = 0.8)
+piA <- lm(pi ~ a + I(a^2) - 1,
+          data = data.frame(pi = 1 - covPs, a = cutoffs))
+lines(seq(0, 0.2, by = 0.01),
+      predict(piA, newdata = data.frame(a = seq(0, 0.2, by = 0.01))),
+      col = "firebrick")
+#for (ii in 1:length(cutoffs)) {
+#    lines(rep(cutoffs[ii], 2),
+#          2*(1 - covPs[ii] +
+#             c(-1,1)*1.96/sqrt(nsim)*sqrt(covPs[ii]*(1 - covPs[ii]))),
+#          col = "gray50")
+#}
 abline(a = 0, b = 1)
 dev.off()
 
@@ -489,7 +501,8 @@ narrowPlot(xgrid = seq(-0.5, 0.5, by = 0.25),
            ygrid = seq(-0.5, 0.5, by = 0.25),
            xlab = expression(hat(theta)^{"("~E~")"}),
            ylab = expression(hat(theta)))
-points(ubChiInt$est[, kapInd], ubMnInt$ests)
+points(ubChiInt$est[, kapInd], ubMnInt$ests, cex = 0.5, pch = 19,
+       col = adjustcolor("black", 0.3))
 dev.off()
 
 ## plot the coverage probabilities by kappa
@@ -499,10 +512,10 @@ png(paste0("meta", 100*cutoff, "pctCovPUB.png"), width = 2.5,
     height = 2.5, res = 480, units = "in")
 tempCovP <- ubChiInt$covP[[ctind]]
 narrowPlot(xgrid = seq(-3, 3, by = 3), ygrid = seq(0.8, 1, by = 0.05),
-           ylab = "Coverage probability", xlim = c(-3.5, 3.5),
+           ylab = expression(pi), xlim = c(-3.5, 3.5),
            xlab = expression(paste(log[10], "(", kappa, ")")))
 lines(log(kseq, 10), tempCovP)
-points(log(kseq, 10), tempCovP, cex = 0.5)
+#points(log(kseq, 10), tempCovP, cex = 0.5)
 polygon(c(log(kseq, 10), rev(log(kseq, 10))),
         c(tempCovP + qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim),
           rev(tempCovP - qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim))),
@@ -528,7 +541,7 @@ abline(v = 0)
 for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
                          col = adjustcolor("black", 0.2))
 abline(h = nsim*(1 - cutoff), lty = 2)
-abline(h = nsim*(1 - cutoff/2), lty = 2, col = "firebrick")
+#abline(h = nsim*(1 - cutoff/2), lty = 2, col = "firebrick")
 dev.off()
 
 ## check level of implicit test
@@ -537,37 +550,48 @@ levels <- lapply(ubChiInt$intervals,
                  function(el) apply(el, 3,
                                     function(mat) mean(is.na(mat))))
 kapLevs <- sapply(levels, function(vec) vec[kapInd])
-png("metaRejectPUB.png", width = 3, height = 3, res = 480,
+png("metaRejectPUB.png", width = 2.5, height = 2.5, res = 480,
     units = "in")
 narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
            ygrid = seq(0, 0.2, by = 0.05),
            xlab = "a", ylab = expression(alpha))
-points(cutoffs, kapLevs)
-for (ii in 1:length(cutoffs)) {
-    lines(rep(cutoffs[ii], 2),
-          (kapLevs[ii] +
-           c(-1,1)*1.96/sqrt(nsim)*sqrt(kapLevs[ii]*(1 - kapLevs[ii]))),
-          col = "gray50")
-}
+points(cutoffs, kapLevs, cex = 0.8)
+#for (ii in 1:length(cutoffs)) {
+#    lines(rep(cutoffs[ii], 2),
+#          (kapLevs[ii] +
+#           c(-1,1)*1.96/sqrt(nsim)*sqrt(kapLevs[ii]*(1 - kapLevs[ii]))),
+#          col = "gray50")
+#}
 abline(a = 0, b = 1)
-abline(a = 0, b = 0.5, lty = 3)
+alphaA <- lm(alpha ~ a + I(a^2) - 1,
+             data = data.frame(alpha = kapLevs, a = cutoffs))
+lines(seq(0, 0.2, by = 0.01),
+      predict(alphaA,
+              newdata = data.frame(a = seq(0, 0.2, by = 0.01))),
+      col = "firebrick")
+#abline(a = 0, b = 0.5, lty = 3)
 dev.off()
 
 ## check coverage probabilities for a particular kappa
 kapInd <- 88
-png("metaCovPUB.png", width = 3, height = 3, res = 480,
+png("metaCovPUB.png", width = 2.5, height = 2.5, res = 480,
     units = "in")
 covPs <- sapply(ubChiInt$covP, function(el) el[kapInd])
 narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
            ygrid = seq(0, 0.2, by = 0.05),
-           xlab = "a", ylab = expression("2"~{(1-pi)}))
-points(cutoffs, 2*(1 - covPs))
-for (ii in 1:length(cutoffs)) {
-    lines(rep(cutoffs[ii], 2),
-          2*(1 - covPs[ii] +
-             c(-1,1)*1.96/sqrt(nsim)*sqrt(covPs[ii]*(1 - covPs[ii]))),
-          col = "gray50")
-}
+           xlab = "a", ylab = expression({1-pi}))
+points(cutoffs, 1 - covPs, cex = 0.8)
+#for (ii in 1:length(cutoffs)) {
+#    lines(rep(cutoffs[ii], 2),
+#          2*(1 - covPs[ii] +
+#             c(-1,1)*1.96/sqrt(nsim)*sqrt(covPs[ii]*(1 - covPs[ii]))),
+#          col = "gray50")                                        #}
+piA <- lm(pi ~ a - 1,
+          data = data.frame(pi = 1-covPs, a = cutoffs))
+lines(seq(0, 0.2, by = 0.01),
+      predict(piA,
+              newdata = data.frame(a = seq(0, 0.2, by = 0.01))),
+      col = "firebrick")
 abline(a = 0, b = 1)
 dev.off()
 
@@ -590,10 +614,10 @@ dev.off()
 
 
 ## RANDOM EFFECTS ##
-mnsd <- 1
+mnsd <- sqrt(0.5)
 randGen <- function(np, ng) randomNormal(np, ng, mnsd = mnsd,
                                          sd = sqrt(std^2 - mnsd^2))
-set.seed(8251506)
+set.seed(53611707)
 randSim <- simMetaStudies(randGen, nsim = nsim, npop = npop,
                           ngroup = ngroup)
 randps <- metaToP(pfunT, randSim, thetas = thetas)
@@ -628,8 +652,8 @@ cutoff <- cutoffs[ctind]
 pltMat <- randChiInt$intervals[[ctind]][,,kapInd]
 ##pltMat <- t(fixedInts$meanInt[order(fixedInts$meanInt[,1]),])
 pltMat <- pltMat[, order(pltMat[1, ])]
-png(paste0("poolInts", 100*cutoff, "pctRand.png"), height = 3,
-    width = 3, res = 480, units = "in")
+png(paste0("poolInts", 100*cutoff, "pctRand.png"), height = 2.5,
+    width = 2.5, res = 480, units = "in")
 narrowPlot(xgrid = seq(-1.5, 1.5, by = 0.75),
            ygrid = seq(0, 1000, by = 200),
            ylab = "Interval", xlab = "Bounds")
@@ -641,56 +665,136 @@ dev.off()
 
 ## 0.975 is the proportion of empty intervals
 ## check for a range of sds
-mnsdSeq <- seq(0.1, 1.9, by = 0.1)
+mnVSeq <- seq(0.05, 3.95, by = 0.15)
 ## a list of closures with the correct variances
-randGens <- lapply(mnsdSeq,
-                   function(mnsd) {
+randGens <- lapply(mnVSeq,
+                   function(mnV) {
                        function(np, ng) {
                            randomNormal(np, ng,
-                                        mnsd = mnsd,
-                                        sd = sqrt(std^2 - mnsd^2))
+                                        mnsd = mnV,
+                                        sd = sqrt(std^2 - mnV))
                        }})
 ## simulate for each
+kseq2 <- exp(seq(-8, 8, by = 0.5))
+kseq2 <- c(kseq2[1:17], 2, kseq2[18:33])
 set.seed(54910913)
 randSims <- lapply(randGens, simMetaStudies, nsim = nsim, npop = npop,
                    ngroup = ngroup)
 randps <- lapply(randSims, metaToP, pfun = pfunT, thetas = thetas)
-randChis <- lapply(randps, chiMetaSweep, kseq = kseq[c(1,81,88,161)])
+randChis <- lapply(randps, chiMetaSweep, kseq = kseq2)
 ## get intervals
 randChiInt <- lapply(randChis, getChiEsts, thetas = thetas,
-                     kseq = kseq[c(1,81,88,161)], cutoffs = cutoffs)
+                     kseq = kseq2, cutoffs = cutoffs)
 ## and rejection probabilities
 randRejectP <- lapply(randChiInt,
                       function(ints) {
-                          lapply(ints$intervals,
+                          sapply(ints$intervals,
                                  function(mat) {
                                      colMeans(is.na(mat[1,,]))
                                  })})
+randRejectP <- simplify2array(randRejectP)
+## do the same for the MLE
+randMn <- lapply(randSims, getMeanEsts, cutoffs = cutoffs)
+randTests <- mapply(function(sim, mns) {
+    rowSums((sweep(sim$means, 1, mns$ests, `-`)/sim$sds)^2)},
+    randSims, randMn)
+randMnPow <- colMeans(pchisq(randTests, df = 7, lower.tail = FALSE) <=
+                      #0.05)
+                      0.514*0.05 + 0.891*0.05^2)
 
-## for rejection rule >= 0.05, what does the power look like in tau?
-powers5cv <- sapply(randRejectP, function(lst) lst[[16]][2])
-powers5fis <- sapply(randRejectP, function(lst) lst[[16]][3])
-powers5sto <- sapply(randRejectP, function(lst) lst[[16]][4])
-powers5tip <- sapply(randRejectP, function(lst) lst[[16]][1])
-png(paste0("poolPowersRand.png"), height = 3.5,
-    width = 3, res = 480, units = "in")
-narrowPlot(xgrid = seq(0, 1, by = 0.25), ygrid = seq(0, 1, by = 0.25),
-           ylab = "Power", mars = c(3.5, 2.1, 1.1, 1.1))
-mtext(expression(frac(tau^2, tau^2 + s^2)), side = 1, line = 2.5,
-      cex = 0.8)
-points(mnsdSeq^2/4, powers5cv, col = cols[4], cex = 0.8)
-lines(mnsdSeq^2/4, powers5cv, col = cols[4])
-points(mnsdSeq^2/4, powers5fis, col = cols[2], cex = 0.8)
-lines(mnsdSeq^2/4, powers5fis, col = cols[2])
-points(mnsdSeq^2/4, powers5sto, col = cols[3], cex = 0.8)
-lines(mnsdSeq^2/4, powers5sto, col = cols[3])
-points(mnsdSeq^2/4, powers5tip, col = cols[1], cex = 0.8)
-lines(mnsdSeq^2/4, powers5tip, col = cols[1])
-legend(x = "bottomright", legend = c("-3.5", "0", "0.3", "3.5"),
-       lty = 1, pch = 1, col = cols[c(1,4,2,3)], cex = 0.8,
-       pt.cex = 0.8,
-       title = expression(paste(log[10], "(", kappa, ")")))
+## set up as data frame
+powerdf <- data.frame(pow = c(randRejectP),
+                      expand.grid(lgk = log(kseq2, 10), a = cutoffs,
+                                  taup = mnVSeq/4))
+
+## plot power contours
+## some plotting packages
+library(ggplot2)
+library(grid)
+
+## DEFINE :: a helper that makes nice labels
+ggLabs <- function(breaks){
+    paste0(c("[", rep("(", length(breaks)-2)), # bottom brackets
+           breaks[-length(breaks)], # break limits
+           ", ", breaks[-1], "]") # top brackets
+}
+
+## SETUP :: some graphical parameters
+nbr <- 12 # number of breaks for simple power
+powBreaks <- c(seq(0, 1 - 1/nbr, length.out = nbr), 1.01)
+powLabs <- ggLabs(round(powBreaks, 1)) # nice labels
+powPal <- colorRampPalette(c("floralwhite", "firebrick")) # palette
+
+## set a new theme based on the "lined raw" template
+myTheme <- theme_linedraw()
+myTheme$text$size <- 8 # text size
+myTheme$plot.title$size <- rel(1.1) # scale down title
+myTheme$strip.text$colour <- "black" # facet title colour
+myTheme$strip.text$size <- 8 # facet title size
+myTheme$strip.background$fill <- "white"
+myTheme$panel.grid$colour <- adjustcolor("gray", 0.4)
+myTheme$plot.title$hjust <- 0.5 # centre title
+
+## plot the contours
+inds <- abs(powerdf$a - 0.05) < 0.001 & powerdf$taup < 0.5
+powerContourBase <- ggplot(data = powerdf[inds,],
+                           aes(taup, lgk, z = pow)) # base ggplot
+powGrob <- ggplotGrob(powerContourBase + # save as a grid grob
+                      xlab(expression({tau^2/4})) +
+                      ylab(expression(log[10]~kappa)) +
+                      geom_contour_filled(breaks = powBreaks) +
+                      scale_fill_manual(values = powPal(nbr+1),
+                                        name = "Power",
+                                        labels = powLabs,
+                                        drop = FALSE,
+                                        guide = "none") +
+                      geom_hline(yintercept = 0.3) +
+                      myTheme) # set theme
+png("poolPowersRand.png", width = 3, height = 3, res = 480,
+    units = "in")
+grid.newpage()
+pushViewport(viewport(x = unit(0.45, "npc"), # facet plot viewport
+                      width = unit(0.9, "npc")))
+grid.draw(powGrob) # facet plot
+popViewport()
+pushViewport(viewport(x = unit(0.93, "npc"), # legend viewport
+                      height = unit(0.4, "npc"),
+                      width = unit(0.05, "npc")))
+grid.text("Power", y = unit(1, "npc") + unit(1, "lines"), # title
+          x = 0.7, gp = gpar(fontsize = 8))
+pushViewport(viewport(x = unit(0.25, "npc"), # scale viewport
+                      height = unit(1, "npc"),
+                      width = unit(0.5, "npc")))
+grid.rect(gp = gpar(bg = NA)) # scale border
+grid.raster(matrix(rev(powPal(25)), ncol = 1), width = unit(1, "npc"),
+            height = unit(1, "npc")) # scale fill (raster)
+grid.segments(x0 = unit(rep(1, 3), "npc"), # scale ticks
+              y0 = unit(seq(0, 1, by = 0.5), "npc"),
+              x1 = unit(rep(1, 3), "npc") + unit(rep(0.25, 3), "lines"),
+              y1 = unit(seq(0, 1, by = 0.5), "npc"),
+              gp = gpar(lwd = 0.5))
+grid.text(label = c(0, 0.5, 1), hjust = 0,
+          y = unit(seq(0, 1, by = 0.5), "npc"),
+          x = unit(rep(1, 3), "npc") + unit(rep(0.5, 3), "lines"),
+          gp = gpar(fontsize = 8)) # tick labels
 dev.off()
+
+## power comparison to the previous test
+png("poolPowersRandVsMn.png", width = 3, height = 3, res = 480,
+    units = "in")
+narrowPlot(xgrid = seq(0, 0.5, by = 0.25), ygrid = seq(0, 1, by = 0.5),
+           xlab = expression({tau^2/4}), ylab = "Power")
+lines(powerdf$taup[abs(powerdf$lgk - log(2,10)) < 0.01 &
+                   abs(powerdf$a - 0.05) < 0.001],
+      powerdf$pow[abs(powerdf$lgk - log(2,10)) < 0.01 &
+                  abs(powerdf$a - 0.05) < 0.001],
+      col = "steelblue")
+lines(mnVSeq/4, randMnPow, col = "firebrick")
+legend(x = "bottomright",
+       legend = c("Evidential", "Classical"), title = "Test",
+       cex = 0.8, lty = 1, col = c("steelblue", "firebrick"))
+dev.off()
+
 
 ## REAL DATA #########################################################
 library(metadat)
