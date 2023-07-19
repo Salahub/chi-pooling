@@ -548,26 +548,25 @@ myTheme$plot.title$hjust <- 0.5 # centre title
 ## change ump = powershr -> fis = powersmis[,4]
 ##        umpPower -> fisPower
 ##        z = ump -> z = fis
-##        l[w] -> l[1]
+##        HR(..., w) -> HR(..., 1)
 ##        D(a,w) -> D(a, omega)
 ##        ln(w) -> ln( omega )
-## and set width = height = 3 to obtain analogous plot of fisher's
-## method
+## to obtain analogous plot of fisher's method
 inds <- log(params$w) %in% c(-6, -3, 0) & -5 <= log(klDivs) &
     5 >= log(klDivs)
 powerContourBase <- ggplot(data = data.frame(fis = powersmis[,4],
                                       lnkl = log(klDivs),
-                                      rho = params$m1/10,
+                                      eta = params$m1/10,
                                       a = params$a,
                                       w = params$w)[inds,], # temporary df
-                           aes(lnkl, rho, z = fis)) # base ggplot
+                           aes(lnkl, eta, z = fis)) # base ggplot
 png("fisPower.png", width = 6, height = 2.5, units = "in", res = 400)
 powGrob <- ggplotGrob(powerContourBase + # save as a grid grob
-                      xlab(expression(paste("ln(D(a, ", "w", "))"))) +
-                      ylab(expression(rho)) +
+                      xlab(expression(paste("ln(D(a, ", omega, "))"))) +
+                      ylab(expression(eta)) +
                       ggtitle(expression(paste("Power of HR(", bold(p),
                                                "; 1) by ln(D(a,", omega,
-                                               ")) and ", rho,
+                                               ")) and ", eta,
                                                " facetted by ln(",
                                                omega, ")"))) +
                       geom_contour_filled(breaks = powBreaks) +
@@ -629,15 +628,15 @@ inds <- log(params$w) %in% c(-6, -3, 0) & -5 <= log(klDivs) &
 for (ii in seq_len(ncol(fisMin))) {
     # temporary base for the particular case
     diffContourBase <- ggplot(data = data.frame(lnkl = log(klDivs),
-                                                rho = params$m1/10,
+                                                eta = params$m1/10,
                                                 a = params$a,
                                                 w = params$w,
                                                 dif = fisMin[,ii])[inds,],
-                              mapping = aes(lnkl, rho, z = dif))
+                              mapping = aes(lnkl, eta, z = dif))
     diffGrob <- ggplotGrob( # save in a grid grob as before
         diffContourBase +
         xlab(expression(paste("ln(D(a, ", omega, "))"))) +
-        ylab(expression(rho)) +
+        ylab(expression(eta)) +
         ggtitle(bquote(paste("Power of HR(", bold(p), ";1)",
                              " minus power of ",
                        .(difTitles[[ii]])))) + # dynamic title
@@ -683,7 +682,7 @@ for (ii in seq_len(ncol(fisMin))) {
 
 
 ## OLD PLOTS FOR REFERENCE, POTENTIAL USE ############################
-## IMAGE :: the power by point size on klDiv by rho
+## IMAGE :: the power by point size on klDiv by eta
 plot(log(klDivs), params$m1/10, cex = powershr*2 + 1, pch = 20,
      col = adjustcolor(wcol(params$w), 0.4))
 
@@ -712,7 +711,7 @@ for (m1 in unique(params$m1)) {
 allpowers <- cbind(true = powershr, mis = powersmis) # table of powers
 bestPow <- apply(allpowers, 1, max) # identify the maximum power
 bPowByPar <- tapply(bestPow, # aggregate by parameter combination
-                    list(w = log(params$w), Mrho = params$m1),
+                    list(w = log(params$w), Meta = params$m1),
                     mean)
 nearMax <- sweep(allpowers, 1, bestPow, # binomial test of whether
                  function(p1, p2) {     # a row matches this max
@@ -731,10 +730,10 @@ tapply(allpowers[,4], params$m1, mean)
 tapply(allpowers[,1], params$m1, mean)
 ## or the differences by m1 and omega
 propFisBest <- tapply(nearMax[,5],
-                      list(w = log(params$w), Mrho = params$m1),
+                      list(w = log(params$w), Meta = params$m1),
                       mean)
 proplwBest <-  tapply(nearMax[,1],
-                      list(w = log(params$w), Mrho = params$m1),
+                      list(w = log(params$w), Meta = params$m1),
                       mean)
 
 ## IMAGE :: a sliced plot of the maximum power
@@ -747,7 +746,7 @@ for (a in unique(params$a)) {
     par(mar = c(2.1, 2.1, 1.1, 1.1)) # set narrow margins
     narrowImage(t(bestPower[as.character(a), , -1]),
                 col = powPal, ynames = -6:0, main = paste("a =", a),
-                ylab = "ln(w)", xlab = expression(paste("M",rho)),
+                ylab = "ln(w)", xlab = expression(paste("M",eta)),
                 breaks = seq(0, 1, length.out = 16))
 }
 
@@ -783,7 +782,7 @@ for (a in unique(params$a)) {
 png(paste0("propFishBest.png"), width = 3, height = 2,
     units = "in", res = 400)
 par(mar = c(2.1, 2.1, 1.1, 2.1)) # set narrow margins
-narrowImage(t(propFisBest[,-1]), xlab = expression(paste("M",rho)),
+narrowImage(t(propFisBest[,-1]), xlab = expression(paste("M",eta)),
             ylab = expression(paste("ln(", omega, ")")), las = 1,
             col = propPal,
             breaks = seq(0, 1, length.out = 16))

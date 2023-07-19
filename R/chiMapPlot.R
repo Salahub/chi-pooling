@@ -36,7 +36,7 @@ powerHeatMap <- function(mat, main = "",
     image(mat, xaxt = "n", yaxt = "n", col = pal,
           ylab = "", xlab = "", main = "")
     mtext(main, side = 3, line = 0, cex = 0.8) # main
-    mtext(expression(rho), side = 2, line = 1, cex = 0.8) # ylab
+    mtext(expression(eta), side = 2, line = 1, cex = 0.8) # ylab
     mtext("logD(a,w)", side = 1, line = 1, padj = 0, cex = 0.8) # xlab
     ## add ticks
     mtext(side = 1, at = seq(0, 1, by = 0.25), text = "|", line = 0,
@@ -68,7 +68,7 @@ alternativeHeatMap <- function(mat, main = "", pal = NULL, ...) {
     image(mat, xaxt = "n", yaxt = "n", col = pal, ylab = "", xlab = "",
           main = main, ...)
     mtext(main, side = 3, line = 0, cex = 0.8) # main
-    mtext(expression(rho), side = 2, line = 1, cex = 0.8) # ylab
+    mtext(expression(eta), side = 2, line = 1, cex = 0.8) # ylab
     mtext("lnD(a,w)", side = 1, line = 1, padj = 0, cex = 0.8) # xlab
     ## add ticks
     mtext(side = 1, at = seq(0, 1, by = 0.25), text = "|", line = 0,
@@ -279,7 +279,7 @@ maxProp <- sweep(sameMaxMask, c(1,2), caseMat, `/`)
 ## 4 4
 ## 8 8
 ## select indices by kappa
-kaps <- c(-8,-1.75)
+kaps <- c(log(2),log(2))
 kapInd <- kapSeq <= kaps[2] & kapSeq >= kaps[1]
 if (!any(kapInd)) {
     kapInd <- logical(length(kapSeq))

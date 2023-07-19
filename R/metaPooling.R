@@ -788,10 +788,10 @@ lines(powerdf$taup[abs(powerdf$lgk - log(2,10)) < 0.01 &
                    abs(powerdf$a - 0.05) < 0.001],
       powerdf$pow[abs(powerdf$lgk - log(2,10)) < 0.01 &
                   abs(powerdf$a - 0.05) < 0.001],
-      col = "steelblue")
-lines(mnVSeq/4, randMnPow, col = "firebrick")
+      col = "firebrick")
+lines(mnVSeq/4, randMnPow, col = "steelblue")
 legend(x = "bottomright",
-       legend = c("Evidential", "Classical"), title = "Test",
+       legend = c("Classical", "Evidential"), title = "Test",
        cex = 0.8, lty = 1, col = c("steelblue", "firebrick"))
 dev.off()
 
@@ -837,12 +837,12 @@ rm(dat.konstantopoulos2011)
 schoolCol <- RColorBrewer::brewer.pal(11, "Set3")
 png("metaSchoolMeans.png", width = 3, height = 3, units = "in",
     res = 480)
-narrowPlot(ygrid = seq(-1, 1, by = 0.5),
+narrowPlot(ygrid = seq(-1.5, 1.5, by = 0.75),
            xgrid = seq(0, 12, by = 3),
-           ylab = "Mean difference", xlab = "District")
+           ylab = "Difference in means", xlab = "District")
 points(unclass(as.factor(schoolDat$district)),
-       y = schoolDat$yi, pch = 20,
-       col = schoolCol[unclass(schoolDat$district)])
+       y = schoolDat$yi, pch = 21,
+       bg = schoolCol[unclass(schoolDat$district)])
 for (ii in 1:nrow(schoolDat)) {
     lines(rep(unclass(schoolDat$district)[ii], 2),
           rep(schoolDat$yi[ii],2) +
@@ -879,9 +879,9 @@ districtPools <- lapply(schoolSplit,
 schoolCol <- RColorBrewer::brewer.pal(11, "Set3")
 png("metaSchoolIntervals.png", width = 3, height = 3, units = "in",
     res = 480)
-narrowPlot(ygrid = seq(-1, 1, by = 0.5),
+narrowPlot(ygrid = seq(-1.5, 1.5, by = 0.75),
            xgrid = seq(0, 12, by = 3),
-           ylab = "Mean difference", xlab = "District")
+           ylab = "Difference in means", xlab = "District")
 points(unclass(as.factor(schoolDat$district)),
        y = schoolDat$yi, pch = 20,
        col = schoolCol[unclass(schoolDat$district)])
