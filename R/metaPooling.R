@@ -1,4 +1,27 @@
 ## FUNCTIONS #########################################################
+## plot marginal histograms on a scatterplot
+addMarHists <- function(x, y, xcuts, ycuts) {
+    bds <- par()$usr
+    rowDist <- table(cut(x, xcuts))
+    colDist <- table(cut(y, ycuts)) # marginal distributions
+    vboxBds <- c(bds[2], bds[2] + 0.1, bds[3:4])
+    hboxBds <- c(bds[1:2], bds[4], bds[4] + 0.1)
+    ## density boxes
+    rect(vboxBds[1], vboxBds[3], vboxBds[2], vboxBds[4], xpd = NA)
+    rect(hboxBds[1], hboxBds[3], hboxBds[2], hboxBds[4], xpd = NA)
+    ## add marginal histograms
+    vseq <- xcuts
+    rect(vboxBds[1], vseq[1:length(colDist)],
+         vboxBds[1] + 0.9*diff(vboxBds[1:2])*(colDist/max(colDist)),
+         vseq[2:(length(colDist) + 1)], xpd = NA,
+         col = adjustcolor("firebrick", 0.5))
+    hseq <- ycuts
+    rect(hseq[1:length(rowDist)], hboxBds[3],
+         hseq[2:(length(rowDist) + 1)], xpd = NA,
+         hboxBds[3] + 0.9*diff(hboxBds[3:4])*(rowDist/max(rowDist)),
+         col = adjustcolor("firebrick", 0.5))
+}
+
 ## custom plotting function with narrow margins
 narrowPlot <- function(xgrid, ygrid, main = "", xlab = "", ylab = "",
                        xticks = xgrid, yticks = ygrid,
@@ -143,13 +166,13 @@ pfunT <- function(x, mus, sds, ns) {
 
 ## convert p-values to chi pool estimates for a range of kappa
 chiMetaSweep <- function(ps, kseq = exp(seq(-8, 8, by = 0.1))) {
-    K <- dim(ps)[2]
+    M <- dim(ps)[2]
     arr <- simplify2array(lapply(
         kseq,
         function(k) {
             pchisq(apply(qchisq(ps, k, lower.tail = FALSE),
                          c(1,3), sum),
-                   df = K*k, lower.tail = FALSE)
+                   df = M*k, lower.tail = FALSE)
         }))
     aperm(arr, c(1,3,2))
 }
@@ -240,28 +263,194 @@ getMeanEsts <- function(sim, cutoffs = c(0.1, 0.05, 0.02, 0.01)) {
 }
 
 ## plot a realization based on the simulated data
-plotRealization <- function(chi, minchi, means, meanEst, thetas, kseq,
-                            ind = sample(1:nsim, 1),
+plotRealization <- function(chi, means, sds, thetas, kseq,
                             cols = 1:4, kaps = c(1, 41, 81),
-                            refKap = 41) {
-    lines(thetas,  minchi[ind, ], type = 'l',
-          col = adjustcolor(cols[4], 0.8))
-    for (ii in kaps) lines(thetas, chi[ind,ii,], type = 'l',
+                            refKap = 41, legend = TRUE) {
+    for (ii in kaps) lines(thetas, chi[ii,], type = 'l',
                            col = if (ii <= refKap-1) {
                                      adjustcolor(cols[1], 0.8)
                                  } else if (ii == refKap) {
                                      adjustcolor(cols[2], 0.8)
                                  } else adjustcolor(cols[3], 0.8))
-    abline(v = 0, col = adjustcolor("black", 0.8), lty = 2, lwd = 1)
-    abline(v = meanEst[ind], col = adjustcolor("black", 0.6), lwd = 1)
-    abline(v = means[ind,], col = adjustcolor("gray50", 0.4))
+    meanEst <- sum(means/sds^2)/sum(1/sds^2)
+    lines(x = c(meanEst - qnorm(0.975)/sum(1/sds^2),
+                meanEst + qnorm(0.975)/sum(1/sds^2)),
+          y = rep(-0.1, 2))
+    points(meanEst, y = -0.1, cex = 0.8)
+    for (ii in seq_along(means)) {
+        lines(x = c(means[ii] - 2*sds[ii], means[ii] + 2*sds[ii]),
+              y = rep(-0.025 - 0.05*(ii-1)/(length(means)-1), 2),
+              lwd = 2.5, col = adjustcolor("black", 1/4))
+    }
+    #abline(v = 0, col = adjustcolor("black", 0.8), lty = 2, lwd = 1)
+    abline(v = meanEst, col = adjustcolor("black", 0.6), lwd = 1)
+    abline(v = means, col = adjustcolor("gray50", 0.4))
     abline(h = 0.05, lty = 3)
-    legend(x = "topleft", legend = c(round(log(kseq[kaps], 10),
-                                           1), "Min"),
-           lty = 1, col = cols, cex = 0.8,
-           title = expression(paste(log[10], "(", kappa, ")")))
+    if (legend) {
+        legend(x = "topleft", legend = round(log(kseq[kaps], 10), 1),
+               lty = 1, col = cols, cex = 0.8,
+               title = expression(paste(log[10], "(", kappa, ")")))
+    }
 }
 
+## CANONICAL EXAMPLES ################################################
+## equal variance
+## parameters
+mn <- 0
+mnstd <- sqrt(0.5)
+kseq <- exp(seq(-8, 8, by = 0.1))
+xseq <- seq(-4, 4, by = 0.01)
+cols <- RColorBrewer::brewer.pal(3, "Dark2")
+## symmetric settings
+syms <- list(c(-3.001, -1.501, -0.501, -0.051, 0.051, 0.501,
+               1.501, 3.001),
+             c(-2.001, -1.501, -0.501, -0.051, 0.051, 0.501,
+               1.501, 2.001),
+             seq(-3.001, 3.001, length.out = 8),
+             seq(-2.001, 2.001, length.out = 8),
+             seq(-0.501, 0.501, length.out = 8))
+## p values
+syms.p <- simplify2array(lapply(syms, function(mns) {
+    2*pnorm(-abs(outer(xseq, mns, `-`)), sd = mnstd)
+}))
+## sweep kappa values
+syms.pool <- chiMetaSweep(aperm(syms.p, c(3, 2, 1)), kseq = kseq)
+
+## plot realizations
+ind <- 5
+png(paste0("syms", ind, ".png"), width = 2.5, height = 2.7,
+    res = 480, units = "in")
+narrowPlot(xgrid = seq(-3, 3, by = 1.5), xlab = "x",
+           ylab = expression(paste("chi(", bold(p), "(x)",
+                                   ";", kappa, ")")),
+           ygrid = seq(0, 1, by = 0.25),
+           addGrid = FALSE, ylim = c(-0.1, 1))
+abline(h = 0)
+plotRealization(syms.pool[ind,,], means = syms[[ind]],
+                sds = rep(mnstd, 8), thetas = xseq,
+                kseq = kseq, kaps = c(1, 88, 161),
+                refKap = 88, cols = cols,
+                legend = FALSE)
+dev.off()
+
+## unbalanced settings
+unbs <- list(-c(-2.501, -1.501, -0.751, -0.301, -0.101, -0.051,
+               0.051, 2.501),
+             -c(-2.001, -1.501, -1.251, -1.101, -0.901, -0.751,
+               -0.501, 2.001),
+             -c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
+               -1.001, 1.501),
+             -c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
+               -1.001, 3.001),
+             -c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
+               -1.001, 4.001))
+unbs.p <- simplify2array(lapply(unbs, function(mns) {
+    2*pnorm(-abs(outer(xseq, mns, `-`)), sd = mnstd)
+}))
+## sweep kappa values
+unbs.pool <- chiMetaSweep(aperm(unbs.p, c(3, 2, 1)), kseq = kseq)
+
+## plot realizations
+ind <- 5
+png(paste0("unbs", ind, "sd0_5.png"), width = 2.5, height = 2.7,
+    res = 480, units = "in")
+narrowPlot(xgrid = seq(-3, 3, by = 1.5), xlab = "x",
+           ylab = expression(paste("chi(", bold(p), "(x)",
+                                   ";", kappa, ")")),
+           ygrid = seq(0, 1, by = 0.25),
+           addGrid = FALSE, ylim = c(-0.1, 1))
+abline(h = 0)
+plotRealization(unbs.pool[ind,,], means = unbs[[ind]],
+                sds = rep(mnstd, 8), thetas = xseq,
+                kseq = kseq, kaps = c(1, 88, 161),
+                refKap = 88, cols = cols,
+                legend = FALSE)
+dev.off()
+
+## unequal variance
+mnstds <- c(2, rep(1, 6), 1/2)
+## symmetric settings
+uvsyms <- list(c(-3.001, -1.501, -0.501, -0.051, 0.051, 0.501,
+               1.501, 3.001),
+             c(-2.001, -1.501, -0.501, -0.051, 0.051, 0.501,
+               1.501, 2.001),
+             seq(-3.001, 3.001, length.out = 8),
+             seq(-1.501, 1.501, length.out = 8),
+             seq(-0.501, 0.501, length.out = 8))
+## p values
+uvsyms.p <- simplify2array(lapply(uvsyms, function(mns) {
+    2*pnorm(-abs(sweep(outer(xseq, mns, `-`), 2, mnstds, `/`)))
+}))
+## sweep kappa values
+uvsyms.pool <- chiMetaSweep(aperm(syms.p, c(3, 2, 1)), kseq = kseq)
+
+## plot realizations
+narrowPlot(xgrid = seq(-4, 4, by = 2), ygrid = seq(0, 1, by = 0.25),
+           addGrid = FALSE, ylim = c(-0.1, 1))
+abline(h = 0)
+ind <- 5
+plotRealization(uvsyms.pool[ind,,], means = uvsyms[[ind]],
+                sds = mnstds, thetas = xseq,
+                kseq = kseq, kaps = c(1, 88, 161),
+                refKap = 88, cols = cols)
+
+## unbalanced settings
+uvunbs <- list(c(-2.501, -1.501, -0.751, -0.301, -0.101, -0.051,
+               0.051, 2.501),
+             c(-2.501, -1.501, -1.251, -1.101, -0.901, -0.751,
+               -0.501, 2.501),
+             c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
+               -1.001, 1.501),
+             c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
+               -1.001, 3.001),
+             c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
+               -1.001, 4.001))
+uvunbs.p <- simplify2array(lapply(uvunbs, function(mns) {
+    2*pnorm(-abs(sweep(outer(xseq, mns, `-`), 2, mnstds, `/`)))
+}))
+## sweep kappa values
+uvunbs.pool <- chiMetaSweep(aperm(uvunbs.p, c(3, 2, 1)), kseq = kseq)
+
+## plot realizations
+narrowPlot(xgrid = seq(-4, 4, by = 2), ygrid = seq(0, 1, by = 0.25),
+           addGrid = FALSE, ylim = c(-0.1, 1))
+abline(h = 0)
+ind <- 5
+plotRealization(uvunbs.pool[ind,,], means = uvunbs[[ind]],
+                sds = mnstds, thetas = xseq,
+                kseq = kseq, kaps = c(1, 88, 161),
+                refKap = 88, cols = cols)
+
+## final case: adding internal points
+addm <- list(c(-3.001, 3.001),
+             c(-3.001, rep(0, 5), 3.001),
+             c(-3.001, rep(0, 10), 3.001),
+             c(-3.001, rep(0, 15), 3.001),
+             c(-3.001, rep(0, 25), 3.001))
+addm.p <- simplify2array(lapply(addm, function(mns) {
+    2*pnorm(-abs(sweep(outer(xseq, mns, `-`), 2, mnstd, `/`)))
+}))
+## sweep kappa values
+addm.pool <- lapply(addm.p, function(ps) {
+    simplify2array(lapply(
+        kseq,
+        function(k) {
+            M <- ncol(ps)
+            pchisq(apply(qchisq(ps, k, lower.tail = FALSE),
+                         1, sum),
+                   df = M*k, lower.tail = FALSE)
+        }))})
+
+## plot realizations
+narrowPlot(xgrid = seq(-4, 4, by = 2), ygrid = seq(0, 1, by = 0.25),
+           addGrid = FALSE, ylim = c(-0.1, 1))
+abline(h = 0)
+ind <- 3
+plotRealization(t(addm.pool[[ind]]), means = addm[[ind]],
+                sds = rep(mnstd, length(addm[[ind]])),
+                thetas = xseq, kseq = kseq,
+                kaps = c(1, 88, 161),
+                refKap = 88, cols = cols)
 
 ## SIMULATIONS #######################################################
 ## settings
@@ -315,8 +504,6 @@ mtext(c("0.95", "0.5"), at = quantile(fixedMnInt$ests,
       side = 4, cex = 0.6, las = 1)
 dev.off()
 
-## compare mean estimates to kappa estimates
-
 ## plot estimates by kappa
 kapInd <- 81
 png("metaEstvsMeanFixed.png", width = 3, height = 3, res = 480,
@@ -351,7 +538,7 @@ abline(h = 1 - cutoff/2, lty = 2, col = "firebrick")
 dev.off()
 
 ## plot all intervals for a particular kappa
-ctind <- 11
+ctind <- 16
 cutoff <- cutoffs[ctind]
 kapInd <- 88 # 88  for Fisher's
 pltMat <- fixedChiInt$intervals[[ctind]][,,kapInd]
@@ -365,7 +552,6 @@ abline(v = 0)
 for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
                          col = adjustcolor("black", 0.2))
 abline(h = nsim*(1 - cutoff), lty = 2)
-#abline(h = nsim*(1 - cutoff/2), lty = 2, col = "firebrick")
 dev.off()
 
 ## check level of implicit test
@@ -380,12 +566,6 @@ narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
            ygrid = seq(0, 0.2, by = 0.05),
            xlab = "a", ylab = expression(alpha))
 points(cutoffs, kapLevs, cex = 0.8)
-#for (ii in 1:length(cutoffs)) {
-#    lines(rep(cutoffs[ii], 2),
-#          (kapLevs[ii] +
-#           c(-1,1)*1.96/sqrt(nsim)*sqrt(kapLevs[ii]*(1 - kapLevs[ii]))),
-#          col = "gray50")
-#}
 abline(a = 0, b = 1)
 alphaA <- lm(alpha ~ a + I(a^2) - 1,
              data = data.frame(alpha = kapLevs, a = cutoffs))
@@ -393,7 +573,6 @@ lines(seq(0, 0.2, by = 0.01),
       predict(alphaA,
               newdata = data.frame(a = seq(0, 0.2, by = 0.01))),
       col = "firebrick")
-#abline(a = 0, b = 0.5, lty = 3)
 dev.off()
 
 ## check coverage probabilities for a particular kappa
@@ -410,26 +589,40 @@ piA <- lm(pi ~ a + I(a^2) - 1,
 lines(seq(0, 0.2, by = 0.01),
       predict(piA, newdata = data.frame(a = seq(0, 0.2, by = 0.01))),
       col = "firebrick")
-#for (ii in 1:length(cutoffs)) {
-#    lines(rep(cutoffs[ii], 2),
-#          2*(1 - covPs[ii] +
-#             c(-1,1)*1.96/sqrt(nsim)*sqrt(covPs[ii]*(1 - covPs[ii]))),
-#          col = "gray50")
-#}
 abline(a = 0, b = 1)
 dev.off()
 
+## compare widths of kappa = 2 to mean CI
+ctind <- 16
+cutoff <- cutoffs[ctind]
+kapInd <- 88
+kapWid <- abs(apply(fixedChiInt$intervals[[ctind]][,,kapInd], 2, diff))
+CIwid <- abs(apply(fixedMnInt$intervals[[ctind]], 2, diff))
+narrowPlot(xgrid = seq(0.35, 0.5, by = 0.05),
+           ygrid = seq(0, 1, by = 0.25),
+           xlab = "Width of confidence interval",
+           ylab = "Width of evidential interval",
+           mars = c(2.1, 2.1, 3.1, 3.1))
+points(CIwid, kapWid, pch = 19,
+       col = adjustcolor("black", 0.4))
+abline(0, 1)
+points(CIwid[c(671, 386, 208, 661, 61, 92)],
+       kapWid[c(671, 386, 208, 661, 61, 92)],
+       pch = 20, col = "firebrick", cex = 2)
+addMarHists(CIwid, kapWid, xcuts = seq(0, 1, by = 0.05),
+            ycuts = seq(0, 1, by = 0.05))
+
 ## plot a realization
-real <- 55 # sample(1:nsim, 1)
+real <- 68 # sample(1:nsim, 1)
 png("metaPoolCurvesFixed.png", width = 5, height = 3, res = 480,
     units = "in")
-narrowPlot(xgrid = seq(-1, 1, by = 0.5),
-           ygrid = seq(0, 0.6, by = 0.15),
+narrowPlot(xgrid = seq(-1, 1, by = 0.25),
+           ygrid = seq(0, 1, by = 0.25),
            xlab = expression(x),
            ylab = expression(paste("chi(", bold(p), "(x)",
                                    ";", kappa, ")")),
            addGrid = FALSE)
-plotRealization(chi = fixedChis, minchi = fixedMnChi,
+plotRealization(chi = fixedChis,
                 means = fixedSim$means, meanEst = fixedMnInt$ests,
                 thetas = thetas, kseq = kseq, cols = cols,
                 kaps = c(1, 88, 161), ind = real, refKap = 88)
@@ -604,7 +797,7 @@ narrowPlot(xgrid = seq(-1.5, 1.5, by = 0.5),
            xlab = expression(x),
            ylab = expression(paste("chi(", bold(p), ";", kappa, ")")),
            addGrid = FALSE)
-plotRealization(chi = ubChis, minchi = ubMnChi,
+plotRealization(chi = ubChis,
                 means = ubSim$means, meanEst = ubMnInt$ests,
                 thetas = thetas, kseq = kseq, cols = cols,
                 kaps = c(1, 88, 161), ind = real, refKap = 88)
@@ -741,7 +934,7 @@ powerContourBase <- ggplot(data = powerdf[inds,],
                            aes(taup, lgk, z = pow)) # base ggplot
 powGrob <- ggplotGrob(powerContourBase + # save as a grid grob
                       xlab(expression({tau^2/4})) +
-                      ylab(expression(log[10]~kappa)) +
+                      ylab(expression(log[10]~{(kappa)})) +
                       geom_contour_filled(breaks = powBreaks) +
                       scale_fill_manual(values = powPal(nbr+1),
                                         name = "Power",
