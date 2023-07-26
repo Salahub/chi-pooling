@@ -280,7 +280,7 @@ plotRealization <- function(chi, means, sds, thetas, kseq,
     for (ii in seq_along(means)) {
         lines(x = c(means[ii] - 2*sds[ii], means[ii] + 2*sds[ii]),
               y = rep(-0.025 - 0.05*(ii-1)/(length(means)-1), 2),
-              lwd = 2.5, col = adjustcolor("black", 1/4))
+              lwd = 1, col = adjustcolor("black", 1/2))
     }
     #abline(v = 0, col = adjustcolor("black", 0.8), lty = 2, lwd = 1)
     abline(v = meanEst, col = adjustcolor("black", 0.6), lwd = 1)
@@ -297,7 +297,7 @@ plotRealization <- function(chi, means, sds, thetas, kseq,
 ## equal variance
 ## parameters
 mn <- 0
-mnstd <- sqrt(0.5)
+mnstd <- 1
 kseq <- exp(seq(-8, 8, by = 0.1))
 xseq <- seq(-4, 4, by = 0.01)
 cols <- RColorBrewer::brewer.pal(3, "Dark2")
@@ -317,20 +317,32 @@ syms.p <- simplify2array(lapply(syms, function(mns) {
 syms.pool <- chiMetaSweep(aperm(syms.p, c(3, 2, 1)), kseq = kseq)
 
 ## plot realizations
-ind <- 5
-png(paste0("syms", ind, ".png"), width = 2.5, height = 2.7,
+ind <- 2
+wid <- if (mnstd == 1) 2.3 else 2.1
+hei <- if (ind == 5) 2.5 else 2.3
+mars <- if (mnstd == 1 & ind == 5) {
+            c(2.1, 2.1, 0.1, 0.1)
+        } else if (ind == 5) {
+            c(2.1, 1.1, 0.1, 0.1)
+        } else if (mnstd == 1) {
+            c(1.1, 2.1, 0.1, 0.1)
+        } else c(1.1, 1.1, 0.1, 0.1)
+suff <- if (mnstd == 1) "" else "sd0_5"
+leg <- ind == 2 & mnstd == 1
+png(paste0("syms", ind, suff, ".png"), width = wid, height = hei,
     res = 480, units = "in")
 narrowPlot(xgrid = seq(-3, 3, by = 1.5), xlab = "x",
            ylab = expression(paste("chi(", bold(p), "(x)",
                                    ";", kappa, ")")),
            ygrid = seq(0, 1, by = 0.25),
-           addGrid = FALSE, ylim = c(-0.1, 1))
+           addGrid = FALSE, ylim = c(-0.1, 1),
+           mars = mars)
 abline(h = 0)
 plotRealization(syms.pool[ind,,], means = syms[[ind]],
                 sds = rep(mnstd, 8), thetas = xseq,
                 kseq = kseq, kaps = c(1, 88, 161),
                 refKap = 88, cols = cols,
-                legend = FALSE)
+                legend = leg)
 dev.off()
 
 ## unbalanced settings
@@ -351,20 +363,32 @@ unbs.p <- simplify2array(lapply(unbs, function(mns) {
 unbs.pool <- chiMetaSweep(aperm(unbs.p, c(3, 2, 1)), kseq = kseq)
 
 ## plot realizations
-ind <- 5
-png(paste0("unbs", ind, "sd0_5.png"), width = 2.5, height = 2.7,
+ind <- 2
+wid <- if (mnstd == 1) 2.3 else 2.1
+hei <- if (ind == 5) 2.5 else 2.3
+mars <- if (mnstd == 1 & ind == 5) {
+            c(2.1, 2.1, 0.1, 0.1)
+        } else if (ind == 5) {
+            c(2.1, 1.1, 0.1, 0.1)
+        } else if (mnstd == 1) {
+            c(1.1, 2.1, 0.1, 0.1)
+        } else c(1.1, 1.1, 0.1, 0.1)
+suff <- if (mnstd == 1) "" else "sd0_5"
+leg <- ind == 2 & mnstd == 1
+png(paste0("unbs", ind, suff, ".png"), width = wid, height = hei,
     res = 480, units = "in")
 narrowPlot(xgrid = seq(-3, 3, by = 1.5), xlab = "x",
            ylab = expression(paste("chi(", bold(p), "(x)",
                                    ";", kappa, ")")),
            ygrid = seq(0, 1, by = 0.25),
-           addGrid = FALSE, ylim = c(-0.1, 1))
+           addGrid = FALSE, ylim = c(-0.1, 1),
+           mars = mars)
 abline(h = 0)
 plotRealization(unbs.pool[ind,,], means = unbs[[ind]],
                 sds = rep(mnstd, 8), thetas = xseq,
                 kseq = kseq, kaps = c(1, 88, 161),
                 refKap = 88, cols = cols,
-                legend = FALSE)
+                legend = leg)
 dev.off()
 
 ## unequal variance
@@ -375,36 +399,49 @@ uvsyms <- list(c(-3.001, -1.501, -0.501, -0.051, 0.051, 0.501,
              c(-2.001, -1.501, -0.501, -0.051, 0.051, 0.501,
                1.501, 2.001),
              seq(-3.001, 3.001, length.out = 8),
-             seq(-1.501, 1.501, length.out = 8),
+             seq(-2.001, 2.001, length.out = 8),
              seq(-0.501, 0.501, length.out = 8))
 ## p values
 uvsyms.p <- simplify2array(lapply(uvsyms, function(mns) {
     2*pnorm(-abs(sweep(outer(xseq, mns, `-`), 2, mnstds, `/`)))
 }))
 ## sweep kappa values
-uvsyms.pool <- chiMetaSweep(aperm(syms.p, c(3, 2, 1)), kseq = kseq)
+uvsyms.pool <- chiMetaSweep(aperm(uvsyms.p, c(3, 2, 1)), kseq = kseq)
 
 ## plot realizations
-narrowPlot(xgrid = seq(-4, 4, by = 2), ygrid = seq(0, 1, by = 0.25),
-           addGrid = FALSE, ylim = c(-0.1, 1))
-abline(h = 0)
 ind <- 5
+wid <- 2.1
+hei <- if (ind == 5) 2.5 else 2.3
+mars <- if (ind == 5) {
+            c(2.1, 1.1, 0.1, 0.1)
+        } else c(1.1, 1.1, 0.1, 0.1)
+png(paste0("unevsym", ind, ".png"), width = wid, height = hei,
+    res = 480, units = "in")
+narrowPlot(xgrid = seq(-3, 3, by = 1.5), xlab = "x",
+           ylab = expression(paste("chi(", bold(p), "(x)",
+                                   ";", kappa, ")")),
+           ygrid = seq(0, 1, by = 0.25),
+           addGrid = FALSE, ylim = c(-0.1, 1),
+           mars = mars)
+abline(h = 0)
 plotRealization(uvsyms.pool[ind,,], means = uvsyms[[ind]],
                 sds = mnstds, thetas = xseq,
                 kseq = kseq, kaps = c(1, 88, 161),
-                refKap = 88, cols = cols)
+                refKap = 88, cols = cols,
+                legend = FALSE)
+dev.off()
 
 ## unbalanced settings
-uvunbs <- list(c(-2.501, -1.501, -0.751, -0.301, -0.101, -0.051,
-               0.051, 2.501),
-             c(-2.501, -1.501, -1.251, -1.101, -0.901, -0.751,
-               -0.501, 2.501),
-             c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
-               -1.001, 1.501),
-             c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
-               -1.001, 3.001),
-             c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
-               -1.001, 4.001))
+uvunbs <- list(-c(-2.501, -1.501, -0.751, -0.301, -0.101, -0.051,
+                  0.051, 2.501),
+               -c(-2.001, -1.501, -1.251, -1.101, -0.901, -0.751,
+                  -0.501, 2.001),
+               -c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
+                  -1.001, 1.501),
+               -c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
+                  -1.001, 3.001),
+               -c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
+                  -1.001, 4.001))
 uvunbs.p <- simplify2array(lapply(uvunbs, function(mns) {
     2*pnorm(-abs(sweep(outer(xseq, mns, `-`), 2, mnstds, `/`)))
 }))
@@ -412,21 +449,35 @@ uvunbs.p <- simplify2array(lapply(uvunbs, function(mns) {
 uvunbs.pool <- chiMetaSweep(aperm(uvunbs.p, c(3, 2, 1)), kseq = kseq)
 
 ## plot realizations
-narrowPlot(xgrid = seq(-4, 4, by = 2), ygrid = seq(0, 1, by = 0.25),
-           addGrid = FALSE, ylim = c(-0.1, 1))
+ind <- 2
+wid <- 2.1
+hei <- if (ind == 5) 2.5 else 2.3
+mars <- if (ind == 5) {
+            c(2.1, 1.1, 0.1, 0.1)
+        } else c(1.1, 1.1, 0.1, 0.1)
+png(paste0("unevunb", ind, ".png"), width = wid, height = hei,
+    res = 480, units = "in")
+narrowPlot(xgrid = seq(-3, 3, by = 1.5), xlab = "x",
+           ylab = expression(paste("chi(", bold(p), "(x)",
+                                   ";", kappa, ")")),
+           ygrid = seq(0, 1, by = 0.25),
+           addGrid = FALSE, ylim = c(-0.1, 1),
+           mars = mars)
 abline(h = 0)
-ind <- 5
 plotRealization(uvunbs.pool[ind,,], means = uvunbs[[ind]],
                 sds = mnstds, thetas = xseq,
                 kseq = kseq, kaps = c(1, 88, 161),
-                refKap = 88, cols = cols)
+                refKap = 88, cols = cols,
+                legend = leg)
+dev.off()
 
 ## final case: adding internal points
 addm <- list(c(-3.001, 3.001),
-             c(-3.001, rep(0, 5), 3.001),
-             c(-3.001, rep(0, 10), 3.001),
-             c(-3.001, rep(0, 15), 3.001),
-             c(-3.001, rep(0, 25), 3.001))
+             c(-3.001, rep(1, 5), 3.001),
+             c(-3.001, rep(1, 10), 3.001),
+             c(-3.001, rep(1, 15), 3.001),
+             c(-3.001, rep(1, 25), 3.001),
+             c(-3.001, rep(1, 1000), 3.001))
 addm.p <- simplify2array(lapply(addm, function(mns) {
     2*pnorm(-abs(sweep(outer(xseq, mns, `-`), 2, mnstd, `/`)))
 }))
@@ -442,15 +493,27 @@ addm.pool <- lapply(addm.p, function(ps) {
         }))})
 
 ## plot realizations
-narrowPlot(xgrid = seq(-4, 4, by = 2), ygrid = seq(0, 1, by = 0.25),
-           addGrid = FALSE, ylim = c(-0.1, 1))
+ind <- 6
+wid <- if (ind == 1) 2.3 else 2.1
+mars <- if (ind == 1) {
+            c(2.1, 2.1, 1.1, 0.1)
+        } else c(2.1, 1.1, 1.1, 0.1)
+leg <- ind == 1
+png(paste0("adm", ind, ".png"), width = wid, height = 2.7,
+    res = 480, units = "in")
+narrowPlot(xgrid = seq(-3, 3, by = 1.5), xlab = "x",
+           ylab = expression(paste("chi(", bold(p), "(x)",
+                                   ";", kappa, ")")),
+           ygrid = seq(0, 1, by = 0.25),
+           addGrid = FALSE, ylim = c(-0.1, 1),
+           mars = mars)
 abline(h = 0)
-ind <- 3
 plotRealization(t(addm.pool[[ind]]), means = addm[[ind]],
                 sds = rep(mnstd, length(addm[[ind]])),
-                thetas = xseq, kseq = kseq,
-                kaps = c(1, 88, 161),
-                refKap = 88, cols = cols)
+                thetas = xseq, kseq = kseq, kaps = c(1, 88, 161),
+                refKap = 88, cols = cols,
+                legend = leg)
+dev.off()
 
 ## SIMULATIONS #######################################################
 ## settings
