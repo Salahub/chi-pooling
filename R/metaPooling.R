@@ -4,8 +4,8 @@ addMarHists <- function(x, y, xcuts, ycuts) {
     bds <- par()$usr
     rowDist <- table(cut(x, xcuts))
     colDist <- table(cut(y, ycuts)) # marginal distributions
-    vboxBds <- c(bds[2], bds[2] + 0.1, bds[3:4])
-    hboxBds <- c(bds[1:2], bds[4], bds[4] + 0.1)
+    vboxBds <- c(bds[2], bds[2] + 0.1*(bds[2] - bds[1]), bds[3:4])
+    hboxBds <- c(bds[1:2], bds[4], bds[4] + 0.1*(bds[4] - bds[3]))
     ## density boxes
     rect(vboxBds[1], vboxBds[3], vboxBds[2], vboxBds[4], xpd = NA)
     rect(hboxBds[1], hboxBds[3], hboxBds[2], hboxBds[4], xpd = NA)
@@ -273,8 +273,8 @@ plotRealization <- function(chi, means, sds, thetas, kseq,
                                      adjustcolor(cols[2], 0.8)
                                  } else adjustcolor(cols[3], 0.8))
     meanEst <- sum(means/sds^2)/sum(1/sds^2)
-    lines(x = c(meanEst - qnorm(0.975)/sum(1/sds^2),
-                meanEst + qnorm(0.975)/sum(1/sds^2)),
+    lines(x = c(meanEst - qnorm(0.975)/sqrt(sum(1/sds^2)),
+                meanEst + qnorm(0.975)/sqrt(sum(1/sds^2))),
           y = rep(-0.1, 2))
     points(meanEst, y = -0.1, cex = 0.8)
     for (ii in seq_along(means)) {
@@ -297,7 +297,7 @@ plotRealization <- function(chi, means, sds, thetas, kseq,
 ## equal variance
 ## parameters
 mn <- 0
-mnstd <- 1
+mnstd <- sqrt(0.5)
 kseq <- exp(seq(-8, 8, by = 0.1))
 xseq <- seq(-4, 4, by = 0.01)
 cols <- RColorBrewer::brewer.pal(3, "Dark2")
@@ -317,7 +317,7 @@ syms.p <- simplify2array(lapply(syms, function(mns) {
 syms.pool <- chiMetaSweep(aperm(syms.p, c(3, 2, 1)), kseq = kseq)
 
 ## plot realizations
-ind <- 2
+ind <- 5
 wid <- if (mnstd == 1) 2.3 else 2.1
 hei <- if (ind == 5) 2.5 else 2.3
 mars <- if (mnstd == 1 & ind == 5) {
@@ -348,8 +348,8 @@ dev.off()
 ## unbalanced settings
 unbs <- list(-c(-2.501, -1.501, -0.751, -0.301, -0.101, -0.051,
                0.051, 2.501),
-             -c(-2.001, -1.501, -1.251, -1.101, -0.901, -0.751,
-               -0.501, 2.001),
+             -c(-2.001,-1.901, -1.751, -1.501, -1.351, -1.121,
+               -1.001, 2.001),
              -c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
                -1.001, 1.501),
              -c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
@@ -434,8 +434,8 @@ dev.off()
 ## unbalanced settings
 uvunbs <- list(-c(-2.501, -1.501, -0.751, -0.301, -0.101, -0.051,
                   0.051, 2.501),
-               -c(-2.001, -1.501, -1.251, -1.101, -0.901, -0.751,
-                  -0.501, 2.001),
+               -c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
+                  -1.001, 2.001),
                -c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
                   -1.001, 1.501),
                -c(-2.001, -1.901, -1.751, -1.501, -1.351, -1.121,
@@ -493,7 +493,7 @@ addm.pool <- lapply(addm.p, function(ps) {
         }))})
 
 ## plot realizations
-ind <- 6
+ind <- 5
 wid <- if (ind == 1) 2.3 else 2.1
 mars <- if (ind == 1) {
             c(2.1, 2.1, 1.1, 0.1)
@@ -661,34 +661,48 @@ cutoff <- cutoffs[ctind]
 kapInd <- 88
 kapWid <- abs(apply(fixedChiInt$intervals[[ctind]][,,kapInd], 2, diff))
 CIwid <- abs(apply(fixedMnInt$intervals[[ctind]], 2, diff))
+png("metaCIWidToEvWidDetl.png", width = 3, height = 3, units = "in",
+    res = 480)
 narrowPlot(xgrid = seq(0.35, 0.5, by = 0.05),
            ygrid = seq(0, 1, by = 0.25),
            xlab = "Width of confidence interval",
            ylab = "Width of evidential interval",
-           mars = c(2.1, 2.1, 3.1, 3.1))
-points(CIwid, kapWid, pch = 19,
-       col = adjustcolor("black", 0.4))
+           mars = c(2.1, 2.1, 1.2, 1.2))
+points(CIwid, kapWid, pch = 20, cex = 0.8,
+       col = adjustcolor("black", 0.2))
 abline(0, 1)
-points(CIwid[c(671, 386, 208, 661, 61, 92)],
-       kapWid[c(671, 386, 208, 661, 61, 92)],
-       pch = 20, col = "firebrick", cex = 2)
+points(CIwid[c(671, 208, 61)],
+       kapWid[c(671, 208, 61)],
+       pch = c(15, 17, 19), col = "firebrick", cex = 0.8)
 addMarHists(CIwid, kapWid, xcuts = seq(0, 1, by = 0.05),
             ycuts = seq(0, 1, by = 0.05))
+bds <- par()$usr
+abline(h = bds[4], xpd = NA, col = "white")
+lines(y = c(bds[4], bds[4]), x = c(bds[1], bds[2] + 0.1*0.162),
+      xpd = NA)
+dev.off()
 
 ## plot a realization
-real <- 68 # sample(1:nsim, 1)
-png("metaPoolCurvesFixed.png", width = 5, height = 3, res = 480,
-    units = "in")
-narrowPlot(xgrid = seq(-1, 1, by = 0.25),
-           ygrid = seq(0, 1, by = 0.25),
-           xlab = expression(x),
+real <- 61 # sample(1:nsim, 1)
+wid <- if (real == 61) 2.3 else 2.1
+mars <- if (real == 61) {
+            c(2.1, 2.1, 1.1, 0.1)
+        } else c(2.1, 1.1, 1.1, 0.1)
+leg <- real == 61
+png(paste0("metaPoolCurveFixed", real, ".png"),
+    width = wid, height = 2.7, res = 480, units = "in")
+narrowPlot(xgrid = seq(-1, 1, by = 0.5), xlab = "x",
            ylab = expression(paste("chi(", bold(p), "(x)",
                                    ";", kappa, ")")),
-           addGrid = FALSE)
-plotRealization(chi = fixedChis,
-                means = fixedSim$means, meanEst = fixedMnInt$ests,
-                thetas = thetas, kseq = kseq, cols = cols,
-                kaps = c(1, 88, 161), ind = real, refKap = 88)
+           ygrid = seq(0, 1, by = 0.25),
+           addGrid = FALSE, ylim = c(-0.1, 1),
+           mars = mars)
+abline(h = 0)
+plotRealization(fixedChis[real,,], means = fixedSim$means[real,],
+                sds = fixedSim$sds[real,],
+                thetas = thetas, kseq = kseq, kaps = c(1, 88, 161),
+                refKap = 88, cols = cols,
+                legend = leg)
 dev.off()
 
 ## reject homogeneity: 19
@@ -812,12 +826,6 @@ narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
            ygrid = seq(0, 0.2, by = 0.05),
            xlab = "a", ylab = expression(alpha))
 points(cutoffs, kapLevs, cex = 0.8)
-#for (ii in 1:length(cutoffs)) {
-#    lines(rep(cutoffs[ii], 2),
-#          (kapLevs[ii] +
-#           c(-1,1)*1.96/sqrt(nsim)*sqrt(kapLevs[ii]*(1 - kapLevs[ii]))),
-#          col = "gray50")
-#}
 abline(a = 0, b = 1)
 alphaA <- lm(alpha ~ a + I(a^2) - 1,
              data = data.frame(alpha = kapLevs, a = cutoffs))
@@ -825,7 +833,6 @@ lines(seq(0, 0.2, by = 0.01),
       predict(alphaA,
               newdata = data.frame(a = seq(0, 0.2, by = 0.01))),
       col = "firebrick")
-#abline(a = 0, b = 0.5, lty = 3)
 dev.off()
 
 ## check coverage probabilities for a particular kappa
@@ -837,11 +844,6 @@ narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
            ygrid = seq(0, 0.2, by = 0.05),
            xlab = "a", ylab = expression({1-pi}))
 points(cutoffs, 1 - covPs, cex = 0.8)
-#for (ii in 1:length(cutoffs)) {
-#    lines(rep(cutoffs[ii], 2),
-#          2*(1 - covPs[ii] +
-#             c(-1,1)*1.96/sqrt(nsim)*sqrt(covPs[ii]*(1 - covPs[ii]))),
-#          col = "gray50")                                        #}
 piA <- lm(pi ~ a - 1,
           data = data.frame(pi = 1-covPs, a = cutoffs))
 lines(seq(0, 0.2, by = 0.01),
@@ -849,6 +851,33 @@ lines(seq(0, 0.2, by = 0.01),
               newdata = data.frame(a = seq(0, 0.2, by = 0.01))),
       col = "firebrick")
 abline(a = 0, b = 1)
+dev.off()
+
+## compare widths of kappa = 2 to mean CI
+ctind <- 16
+cutoff <- cutoffs[ctind]
+kapInd <- 88
+kapWid <- abs(apply(ubChiInt$intervals[[ctind]][,,kapInd], 2, diff))
+CIwid <- abs(apply(ubMnInt$intervals[[ctind]], 2, diff))
+png("metaCIWidToEvWidDetlub.png", width = 3, height = 3, units = "in",
+    res = 480)
+narrowPlot(xgrid = seq(0.3, 0.5, by = 0.05),
+           ygrid = seq(0, 1.2, by = 0.3),
+           xlab = "Width of confidence interval",
+           ylab = "Width of evidential interval",
+           mars = c(2.1, 2.1, 1.2, 1.2))
+points(CIwid, kapWid, pch = 20, cex = 0.8,
+       col = adjustcolor("black", 0.2))
+abline(0, 1)
+#points(CIwid[c(671, 208, 61)],
+#       kapWid[c(671, 208, 61)],
+#       pch = c(15, 17, 19), col = "firebrick", cex = 0.8)
+addMarHists(CIwid, kapWid, xcuts = seq(0, 1.2, by = 0.05),
+            ycuts = seq(0, 1.2, by = 0.05))
+bds <- par()$usr
+abline(h = bds[4], xpd = NA, col = "white")
+lines(y = c(bds[4], bds[4]), x = c(bds[1], bds[2] + 0.1*0.4),
+      xpd = NA)
 dev.off()
 
 ## plot a realization
