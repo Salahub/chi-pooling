@@ -287,9 +287,16 @@ plotRealization <- function(chi, means, sds, thetas, kseq,
     abline(v = means, col = adjustcolor("gray50", 0.4))
     abline(h = 0.05, lty = 3)
     if (legend) {
-        legend(x = "topleft", legend = round(log(kseq[kaps], 10), 1),
-               lty = 1, col = cols, cex = 0.8,
-               title = expression(paste(log[10], "(", kappa, ")")))
+        #legend(x = "topleft", legend = round(log(kseq[kaps], 10), 1),
+        #       lty = 1, col = cols, cex = 0.8,
+        #       title = expression(paste(log[10], "(", kappa, ")")))
+        temp <- legend("topleft", legend = rep("", length(kaps)),
+                       text.width = strwidth("-3.5"), col = cols,
+                       cex = 0.8, lty = 1, xjust = 1, yjust = 1,
+                       title = expression(paste(log[10], "(",
+                                                kappa, ")")))
+        text(temp$rect$left + temp$rect$w, temp$text$y,
+             round(log(kseq[kaps], 10), 1), pos = 2, cex = 0.8)
     }
 }
 
@@ -297,7 +304,7 @@ plotRealization <- function(chi, means, sds, thetas, kseq,
 ## equal variance
 ## parameters
 mn <- 0
-mnstd <- sqrt(0.5)
+mnstd <- 1 # sqrt(0.5)
 kseq <- exp(seq(-8, 8, by = 0.1))
 xseq <- seq(-4, 4, by = 0.01)
 cols <- RColorBrewer::brewer.pal(3, "Dark2")
@@ -317,14 +324,10 @@ syms.p <- simplify2array(lapply(syms, function(mns) {
 syms.pool <- chiMetaSweep(aperm(syms.p, c(3, 2, 1)), kseq = kseq)
 
 ## plot realizations
-ind <- 5
-wid <- if (mnstd == 1) 2.3 else 2.1
-hei <- if (ind == 5) 2.5 else 2.3
-mars <- if (mnstd == 1 & ind == 5) {
-            c(2.1, 2.1, 0.1, 0.1)
-        } else if (ind == 5) {
-            c(2.1, 1.1, 0.1, 0.1)
-        } else if (mnstd == 1) {
+ind <- 2
+wid <- if (ind == 2) 2.3 else 2.1
+hei <- 2.3
+mars <- if (ind == 2) {
             c(1.1, 2.1, 0.1, 0.1)
         } else c(1.1, 1.1, 0.1, 0.1)
 suff <- if (mnstd == 1) "" else "sd0_5"
@@ -364,13 +367,9 @@ unbs.pool <- chiMetaSweep(aperm(unbs.p, c(3, 2, 1)), kseq = kseq)
 
 ## plot realizations
 ind <- 2
-wid <- if (mnstd == 1) 2.3 else 2.1
-hei <- if (ind == 5) 2.5 else 2.3
-mars <- if (mnstd == 1 & ind == 5) {
-            c(2.1, 2.1, 0.1, 0.1)
-        } else if (ind == 5) {
-            c(2.1, 1.1, 0.1, 0.1)
-        } else if (mnstd == 1) {
+wid <- if (ind == 2) 2.3 else 2.1
+hei <- 2.3
+mars <- if (ind == 2) {
             c(1.1, 2.1, 0.1, 0.1)
         } else c(1.1, 1.1, 0.1, 0.1)
 suff <- if (mnstd == 1) "" else "sd0_5"
@@ -409,12 +408,12 @@ uvsyms.p <- simplify2array(lapply(uvsyms, function(mns) {
 uvsyms.pool <- chiMetaSweep(aperm(uvsyms.p, c(3, 2, 1)), kseq = kseq)
 
 ## plot realizations
-ind <- 5
-wid <- 2.1
-hei <- if (ind == 5) 2.5 else 2.3
-mars <- if (ind == 5) {
-            c(2.1, 1.1, 0.1, 0.1)
-        } else c(1.1, 1.1, 0.1, 0.1)
+ind <- 2
+wid <- if (ind == 2) 2.3 else 2.1
+hei <- 2.5
+mars<- if (ind == 2) {
+           c(2.1, 2.1, 0.1, 0.1)
+       } else c(2.1, 1.1, 0.1, 0.1)
 png(paste0("unevsym", ind, ".png"), width = wid, height = hei,
     res = 480, units = "in")
 narrowPlot(xgrid = seq(-3, 3, by = 1.5), xlab = "x",
@@ -449,12 +448,12 @@ uvunbs.p <- simplify2array(lapply(uvunbs, function(mns) {
 uvunbs.pool <- chiMetaSweep(aperm(uvunbs.p, c(3, 2, 1)), kseq = kseq)
 
 ## plot realizations
-ind <- 2
-wid <- 2.1
-hei <- if (ind == 5) 2.5 else 2.3
-mars <- if (ind == 5) {
-            c(2.1, 1.1, 0.1, 0.1)
-        } else c(1.1, 1.1, 0.1, 0.1)
+ind <- 5
+wid <- if (ind == 2) 2.3 else 2.1
+hei <- 2.5
+mars <- if (ind == 2) {
+            c(2.1, 2.1, 0.1, 0.1)
+        } else c(2.1, 1.1, 0.1, 0.1)
 png(paste0("unevunb", ind, ".png"), width = wid, height = hei,
     res = 480, units = "in")
 narrowPlot(xgrid = seq(-3, 3, by = 1.5), xlab = "x",
@@ -493,7 +492,7 @@ addm.pool <- lapply(addm.p, function(ps) {
         }))})
 
 ## plot realizations
-ind <- 5
+ind <- 1
 wid <- if (ind == 1) 2.3 else 2.1
 mars <- if (ind == 1) {
             c(2.1, 2.1, 1.1, 0.1)
