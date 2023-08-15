@@ -1116,23 +1116,32 @@ data(dat.konstantopoulos2011)
 schoolDat <- dat.konstantopoulos2011
 schoolDat$district <- factor(schoolDat$district)
 rm(dat.konstantopoulos2011)
+schoolDat <- schoolDat[order(schoolDat$district,
+                             schoolDat$yi),]
 
 ## plot the data
 schoolCol <- RColorBrewer::brewer.pal(11, "Set3")
-png("metaSchoolMeans.png", width = 3, height = 3, units = "in",
+district <- unclass(schoolDat$district)
+distRle <- rle(c(district))
+xvals <- unlist(sapply(1:11, function(ii) {
+    seq(distRle$values[ii] - 0.2,
+        distRle$values[ii] + 0.2,
+        length.out = distRle$lengths[ii])
+}))
+png("metaSchoolMeans.png", width = 6, height = 3, units = "in",
     res = 480)
 narrowPlot(ygrid = seq(-1.5, 1.5, by = 0.75),
            xgrid = seq(0, 12, by = 3),
            ylab = "Difference in means", xlab = "District")
-points(unclass(as.factor(schoolDat$district)),
+for (ii in 1:nrow(schoolDat)) {
+    lines(rep(xvals[ii], 2),
+          rep(schoolDat$yi[ii],2) +
+          c(-1.96, 1.96)*sqrt(schoolDat$vi[ii]))
+          #col = schoolCol[unclass(schoolDat$district)[ii]])
+}
+points(xvals,
        y = schoolDat$yi, pch = 21,
        bg = schoolCol[unclass(schoolDat$district)])
-for (ii in 1:nrow(schoolDat)) {
-    lines(rep(unclass(schoolDat$district)[ii], 2),
-          rep(schoolDat$yi[ii],2) +
-          c(-1.96, 1.96)*sqrt(schoolDat$vi[ii]),
-          col = schoolCol[unclass(schoolDat$district)[ii]])
-}
 dev.off()
 
 ## sweep of values
@@ -1161,25 +1170,25 @@ districtPools <- lapply(schoolSplit,
 
 ## plot the data
 schoolCol <- RColorBrewer::brewer.pal(11, "Set3")
-png("metaSchoolIntervals.png", width = 3, height = 3, units = "in",
+png("metaSchoolIntervals.png", width = 6, height = 3, units = "in",
     res = 480)
 narrowPlot(ygrid = seq(-1.5, 1.5, by = 0.75),
            xgrid = seq(0, 12, by = 3),
            ylab = "Difference in means", xlab = "District")
-points(unclass(as.factor(schoolDat$district)),
-       y = schoolDat$yi, pch = 20,
-       col = schoolCol[unclass(schoolDat$district)])
 for (ii in 1:nrow(schoolDat)) {
-    lines(rep(unclass(schoolDat$district)[ii], 2),
+    lines(rep(xvals[ii], 2),
           rep(schoolDat$yi[ii],2) +
           c(-1.96, 1.96)*sqrt(schoolDat$vi[ii]),
           col = schoolCol[unclass(schoolDat$district)[ii]])
 }
+points(xvals,
+       y = schoolDat$yi, pch = 20,
+       col = schoolCol[unclass(schoolDat$district)])
 for (ii in 1:length(districtPools)) {
     temp <-  safeRange(xseq[(districtPools[[ii]] >= 0.05)])
     tempch <- if (is.na(temp)[1]) 4 else 0
     points(y = xseq[which.max(districtPools[[ii]])],
-           x = ii, pch = tempch)
-    lines(x = rep(ii, 2), y = temp)
+           x = ii + 0.3, pch = tempch, col = "black")
+    lines(x = rep(ii + 0.3, 2), y = temp, col = "black")
 }
 dev.off()
