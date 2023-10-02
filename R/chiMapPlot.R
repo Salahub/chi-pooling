@@ -188,7 +188,7 @@ gFilt <- gaussFilt/sum(gaussFilt)
 
 ## LOADING ###########################################################
 ## read in the power data
-##dataFile <- "chiPowersMap80.Rds" # log(w)
+#dataFile <- "chiPowersMap80.Rds" # log(w)
 dataFile <- "chiPowersMap80_unifW.Rds"
 chiPowers <- readRDS(dataFile)
 ## make into single data frame
@@ -287,6 +287,11 @@ if (!any(kapInd)) {
 }
 ## aggregate indices and standardize
 kapMat <- apply(sameMaxMask[,,kapInd], c(1,2), sum)#/sum(kapInd)
+## apply the mask to every slice
+kapMasked <- sameMaxMask
+for (ii in seq_along(kapSeq)) {
+    kapMasked[,,ii][!maskMat] <- NA
+}
 ## mask this match
 kapMask <- kapMat; kapMask[!maskMat] <- NA
 
