@@ -1,4 +1,4 @@
-##' @title Identify a region of plausible alternative hypotheses
+ ##' @title Identify a region of plausible alternative hypotheses
 ##' in the proportion, strength of non-null evidence space
 ##' @description This function provides a convenient way to interact
 ##' with simulations performed over a grid of possible alternatives
@@ -41,8 +41,9 @@ altFrequencyMat <- function(logKappaRange, logW = FALSE) {
         maskMat <- kappaPowersMasked
     }
     kapSeq <- as.numeric(dimnames(maskMat)$logk)
-    kapInd <- kapSeq <= kappaRange[2] & kapSeq >= kappaRange[1]
-    if (kappaRange[2] > max(kapSeq) | kappaRange[1] < min(kapSeq)) {
+    kapInd <- kapSeq <= logKappaRange[2] & kapSeq >= logKappaRange[1]
+    if (logKappaRange[2] > max(kapSeq) |
+        logKappaRange[1] < min(kapSeq)) {
         warning(cat("kappaRange extends beyond the simulation range",
                     "(exp(-8) to exp(8)), map reported is only",
                     "accurate for values within this range"))
@@ -114,7 +115,7 @@ marHistHeatMap <- function(mat, main = "", ylab = expression(eta),
                 length.out = length(colDist) + 1)
     rect(vboxBds[1], vseq[1:length(colDist)],
          vboxBds[1] + 0.9*diff(vboxBds[1:2])*(colDist/max(colDist)),
-         vseq[2:(length(colDist) + 1)], xpd = NA, col = histfill)
+         vseq[2:(length(colDist) + 1)], xpd = NA, col = histFill)
     hseq <- seq(hboxBds[1], hboxBds[2],
                 length.out = length(rowDist) + 1)
     rect(hseq[1:length(rowDist)], hboxBds[3],

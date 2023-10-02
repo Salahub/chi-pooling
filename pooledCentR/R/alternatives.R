@@ -94,6 +94,6 @@ pBetaH3 <- function(a, b = 1/w + a*(1 - 1/w), w = (1 - a)/(b - a),
     m1 <- floor(M*eta) # number of non-null tests to generate
     h1 <- rbeta(m1*N, shape1 = a, shape2 = b)
     h0 <- runif((M - m1)*N) # true nulls
-    cbind(matrix(h1, ncol = m1, nrow = nsim),
-          matrix(h0, ncol = M - m1, nrow = nsim))
+    cbind(matrix(h1, ncol = m1, nrow = N),
+          matrix(h0, ncol = M - m1, nrow = N))
 }

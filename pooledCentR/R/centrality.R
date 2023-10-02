@@ -15,6 +15,7 @@
 ##' @param poolFun function accepting a vector of p-values
 ##' @param alpha numeric between 0 and 1
 ##' @param M integer, how many p-values are there?
+##' @param interval two numerics giving the bounds of root-searching
 ##' @param poolArgs (optional) additional named arguments for poolFun
 ##' @param ... additional arguments to uniroot
 ##' @return The uniroot output.
@@ -23,11 +24,12 @@
 ##' estimatePc(tippool, 0.05, M = 10, interval = c(0, 1))
 ##' @author Chris Salahub
 estimatePc <- function(poolFun, alpha = 0.05, M = 2,
-                       poolArgs = list(), ...) {
+                       interval = c(0, 1), poolArgs = list(), ...) {
     pcf <- function(x) do.call(poolFun,
                                args = c(list(rep(x, M)),
                                         poolArgs)) - alpha
-    uniroot(pcf, ...)
+
+    uniroot(pcf, interval = interval, ...)$root
 }
 
 ##' @title Compute the marginal rejection level
@@ -42,8 +44,8 @@ estimatePc <- function(poolFun, alpha = 0.05, M = 2,
 ##' argument and potentially other arguments given in poolArgs and
 ##' returns a single value. Using this pooling function, a specified
 ##' dimension M and a rejection level alpha, uniroot searches for the
-##' root to poolFun - alpha along one margin when all p-values are
-##' equal to b.
+##' root to poolFun - alpha along one margin when all other p-values
+##' are equal to b.
 ##' @param poolFun function accepting a vector of p-values
 ##' @param alpha numeric between 0 and 1
 ##' @param M integer, how many p-values are there?
@@ -66,7 +68,7 @@ estimatePrb <- function(poolFun, alpha = 0.05, b = 1, M = 2,
         pcr <- function(x) do.call(poolFun,
                                    args = c(list(c(x, rep(b, M-1))),
                                             poolArgs)) - alpha
-        uniroot(pcr, lower = 0, upper = b, ...)
+        uniroot(pcr, lower = 0, upper = b, ...)$root
     }
 }
 
@@ -85,7 +87,6 @@ estimatePrb <- function(poolFun, alpha = 0.05, b = 1, M = 2,
 ##' @param poolFun function accepting a vector of p-values
 ##' @param alpha numeric between 0 and 1
 ##' @param M integer, how many p-values are there?
-##' @param b numeric between 0 and 1
 ##' @param poolArgs (optional) additional named arguments for poolFun
 ##' @param ... additional arguments to uniroot
 ##' @return The uniroot output.
@@ -95,11 +96,11 @@ estimatePrb <- function(poolFun, alpha = 0.05, b = 1, M = 2,
 ##' estimatePrb(stopool, 0.05, M = 10)
 ##' estimatePrb(stopool, 0.05, M = 10, b = 0.5)
 ##' @author Chris Salahub
-estimateQ <- function(poolFun, alpha = 0.05, M = 2, b = 1,
+estimateQ <- function(poolFun, alpha = 0.05, M = 2,
                       poolArgs = list(), ...) {
     pc <- estimatePc(poolFun, alpha = alpha, M = M,
-                     poolArgs = poolArgs, ...)$root
+                     poolArgs = poolArgs, ...)
     pr <- estimatePrb(poolFun, alpha = alpha, M = M, b = 1,
-                     poolArgs = poolArgs, ...)$root
+                     poolArgs = poolArgs, ...)
     (pc - pr)/pc
 }

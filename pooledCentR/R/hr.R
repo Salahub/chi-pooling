@@ -80,11 +80,11 @@ hrPool <- function(p, w = 1, nsim = 1e5) {
 hrPc <- function(w, alpha = 0.05, M = 2, nsim = 1e5) {
     dat <- matrix(runif(M*nsim), ncol = M)
     pools <- apply(dat, 1, hrStat, w = w)
-    tempPc <- function(pc, alpha = alpha) {
+    tempPc <- function(pc) {
         mean(hrStat(rep(pc, M), w) >= pools) - alpha
     }
     uniroot(tempPc, interval = c(0, 1-1/(2*nsim)),
-            tol = 1/(2*nsim))
+            tol = 1/(2*nsim))$root
 }
 
 ##' @title Empirical UMP beta marginal rejection level
@@ -115,12 +115,12 @@ hrPc <- function(w, alpha = 0.05, M = 2, nsim = 1e5) {
 hrPr <- function(w, alpha = 0.05, M = 2, nsim = 1e5) {
     dat <- matrix(runif(M*nsim), ncol = M)
     pools <- apply(dat, 1, hrStat, w = w)
-    tempPr <- function(pr, alpha = alpha) {
+    tempPr <- function(pr) {
         mean(hrStat(c(pr, rep(0.999, M-1)), w) >= pools) -
             alpha
     }
     uniroot(tempPr, interval = c(0, 1-1/(2*nsim)),
-            tol = 1/(2*nsim))
+            tol = 1/(2*nsim))$root
 }
 
 ##' @title Empirical UMP beta centrality quotient
