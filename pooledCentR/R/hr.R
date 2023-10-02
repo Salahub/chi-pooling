@@ -68,9 +68,9 @@ hrPool <- function(p, w = 1, nsim = 1e5) {
 ##' This function estimates the central rejection level empirically
 ##' by simulating a specified number of null cases to give an empirical
 ##' pooled p-value for the rejection level alpha.
-##' @param kappa numeric between 0 and infinity
-##' @param M integer sample size greater than 0
+##' @param w numeric between 0 and 1
 ##' @param alpha numeric between 0 and 1
+##' @param M integer sample size greater than 0
 ##' @param nsim integer, the number of simulated null cases generated
 ##' @return A numeric between 0 and 1.
 ##' @examples
@@ -103,9 +103,9 @@ hrPc <- function(w, alpha = 0.05, M = 2, nsim = 1e5) {
 ##' This function estimates the marginal rejection level empirically
 ##' by simulating a specified number of null cases to give an empirical
 ##' pooled p-value for the rejection level alpha.
-##' @param kappa numeric between 0 and infinity
-##' @param M integer sample size greater than 0
+##' @param w numeric between 0 and 1
 ##' @param alpha numeric between 0 and 1
+##' @param M integer sample size greater than 0
 ##' @param nsim integer, the number of simulated null cases generated
 ##' @return A numeric between 0 and 1.
 ##' @examples
@@ -121,4 +121,35 @@ hrPr <- function(w, alpha = 0.05, M = 2, nsim = 1e5) {
     }
     uniroot(tempPr, interval = c(0, 1-1/(2*nsim)),
             tol = 1/(2*nsim))
+}
+
+##' @title Empirical UMP beta centrality quotient
+##' @description Estimates the centrality quotient for the UMP
+##' pooled p-value of a restricted beta family.
+##' @details The centrality quotient communicates the tendency for a
+##' test to favour evidence shared among all tests over strong
+##' evidence in a single test.
+##'
+##' To test the null hypotheses that all p-values are uniform
+##' against a restricted beta family 0 < a <= 1 <= b, the most
+##' powerful pooled p-value linearly combines upper and lower tail
+##' probabilities of the chi-squared distribution with two degrees
+##' of freedom with weights w and (1 - w) where w = (1 - a)/(b - a).
+##'
+##' This function uses the individual estimation functions for
+##' central and marginal rejection levels to compute the centrality
+##' quotient for the UMP pooled p-value.
+##' @param w numeric between 0 and 1
+##' @param alpha numeric between 0 and 1
+##' @param M integer sample size greater than 0
+##' @param nsim integer, the number of simulated null cases generated
+##' @return An empirical estimate of the centrality quotient.
+##' @examples
+##' estimatePrb(stopool, 0.05, M = 10)
+##' estimatePrb(stopool, 0.05, M = 10, b = 0.5)
+##' @author Chris Salahub
+hrQ <- function(w, alpha = 0.05, M = 2, nsim = 1e5) {
+    pc <- hrPc(w, alpha, M, nsim)
+    pr <- hrPr(w, alpha, M, nsim)
+    1 - pr/pc
 }

@@ -90,7 +90,7 @@ chiPr <- function(kappa, M, alpha = 0.05) {
 ##' chiCentQuot(2, 20, 0.05)
 ##' chiCentQuot(0.5, 20, 0.05)
 ##' @author Chris Salahub
-chiCentQuot <- function(kappa, M, alpha = 0.05) {
+chiQ <- function(kappa, M, alpha = 0.05) {
     1 - chiPr(kappa, M, alpha)/chiPc(kappa, M, alpha)
 }
 
@@ -115,6 +115,6 @@ chiCentQuot <- function(kappa, M, alpha = 0.05) {
 ##' @author Chris Salahub
 chiKappa <- function(cq, M, alpha = 0.05, interval = c(0,100),
                      tol = .Machine$double.eps^0.5) {
-    uniroot(function(x) chiCentQuot(x, M, alpha) - cq,
+    uniroot(function(x) chiQ(x, M, alpha) - cq,
             interval = interval, tol = tol)$root
 }
