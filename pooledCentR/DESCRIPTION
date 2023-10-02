@@ -7,8 +7,8 @@ Authors@R: c(person(given = "Chris", family = "Salahub", role = c("aut", "cre"),
 Author: Chris Salahub [aut, cre]
 Maintainer: Chris Salahub <chris.salahub@uwaterloo.ca>
 Depends: R (>= 4.3.0)
-Imports: poolR
-Suggests:
+Imports: 
+Suggests: poolR
 Enhances:
 License: GPL (>= 3) | file LICENCE
 NeedsCompilation: no
