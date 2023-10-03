@@ -514,6 +514,7 @@ plotRealization(t(addm.pool[[ind]]), means = addm[[ind]],
                 legend = leg)
 dev.off()
 
+
 ## SIMULATIONS #######################################################
 ## settings
 mn <- 0
@@ -521,7 +522,7 @@ std <- 2
 nsim <- 1000
 ngroup <- 8
 npop <- 240
-minQuants <- readRDS("curveMinQuantiles.Rds")
+minQuants <- readRDS("./results/curveMinQuantiles.Rds")
 kseq <- exp(seq(-8, 8, by = 0.1))
 thetas <- seq(-1.5, 1.5, by = 0.01)
 cols <- RColorBrewer::brewer.pal(4, "Dark2")
@@ -589,7 +590,6 @@ narrowPlot(xgrid = seq(-3, 3, by = 3), ygrid = seq(0.8, 1, by = 0.05),
            ylab = expression(pi), xlim = c(-3.5, 3.5),
            xlab = expression(paste(log[10], "(", kappa, ")")))
 lines(log(kseq, 10), tempCovP)
-#points(log(kseq, 10), tempCovP, cex = 0.5)
 polygon(c(log(kseq, 10), rev(log(kseq, 10))),
         c(tempCovP + qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim),
           rev(tempCovP - qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim))),
@@ -603,8 +603,8 @@ dev.off()
 ctind <- 16
 cutoff <- cutoffs[ctind]
 kapInd <- 88 # 88  for Fisher's
-pltMat <- fixedChiInt$intervals[[ctind]][,,kapInd]
-##pltMat <- t(fixedMnInt[order(fixedMnInt[,1]),])
+pltMat <- fixedChiInt$intervals[[ctind]][,,kapInd] # chi case
+##pltMat <- t(fixedMnInt[order(fixedMnInt[,1]),]) # classical case
 pltMat <- pltMat[, order(pltMat[1, ])]
 png(paste0("poolInts", 100*cutoff, "pctFixed.png"), height = 2.5,
     width = 2.5, res = 480, units = "in")
@@ -704,9 +704,6 @@ plotRealization(fixedChis[real,,], means = fixedSim$means[real,],
                 legend = leg)
 dev.off()
 
-## reject homogeneity: 19
-## separation of curves: 55, 79, 86
-
 
 ## FIXED EFFECTS UNBALANCED ##
 fixedGenUB <- function(np, ng) {
@@ -758,8 +755,6 @@ abline(h = quantile(ubMnInt$ests, c(0.025, 0.25, 0.75, 0.975)),
 mtext(c("0.95", "0.5"), at = quantile(ubMnInt$ests,
                                       c(0.025, 0.25)),
       side = 4, cex = 0.6, las = 1)
-#abline(h = quantile(ubWgtInt$ests, c(0.025, 0.25, 0.75, 0.975)),
-#       lty = 3, col = "firebrick")
 dev.off()
 
 ## plot estimates by kappa
@@ -798,9 +793,9 @@ dev.off()
 ctind <- 20
 cutoff <- cutoffs[ctind]
 kapInd <- 88 # 88  for Fisher's
-pltMat <- ubChiInt$intervals[[ctind]][,,kapInd]
-##pltMat <- ubWgtInt$intervals[[ctind]]
-##pltMat <- t(fixedInts$meanInt[order(fixedInts$meanInt[,1]),])
+pltMat <- ubChiInt$intervals[[ctind]][,,kapInd] # chi method
+##pltMat <- ubWgtInt$intervals[[ctind]] # another method
+##pltMat <- t(fixedInts$meanInt[order(fixedInts$meanInt[,1]),]) #classic
 pltMat <- pltMat[, order(pltMat[1, ])]
 png(paste0("poolInts", 100*cutoff, "pctUB.png"), height = 2.5,
     width = 2.5, res = 480, units = "in")
@@ -810,7 +805,6 @@ abline(v = 0)
 for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
                          col = adjustcolor("black", 0.2))
 abline(h = nsim*(1 - cutoff), lty = 2)
-#abline(h = nsim*(1 - cutoff/2), lty = 2, col = "firebrick")
 dev.off()
 
 ## check level of implicit test
@@ -893,8 +887,6 @@ plotRealization(chi = ubChis,
                 thetas = thetas, kseq = kseq, cols = cols,
                 kaps = c(1, 88, 161), ind = real, refKap = 88)
 dev.off()
-
-## 15
 
 
 ## RANDOM EFFECTS ##
@@ -996,14 +988,14 @@ powerdf <- data.frame(pow = c(randRejectP),
 library(ggplot2)
 library(grid)
 
-## DEFINE :: a helper that makes nice labels
+## define a helper that makes nice labels
 ggLabs <- function(breaks){
     paste0(c("[", rep("(", length(breaks)-2)), # bottom brackets
            breaks[-length(breaks)], # break limits
            ", ", breaks[-1], "]") # top brackets
 }
 
-## SETUP :: some graphical parameters
+## set up some graphical parameters
 nbr <- 12 # number of breaks for simple power
 powBreaks <- c(seq(0, 1 - 1/nbr, length.out = nbr), 1.01)
 powLabs <- ggLabs(round(powBreaks, 1)) # nice labels
@@ -1084,33 +1076,6 @@ dev.off()
 library(metadat)
 library(metafor)
 
-## look at the covid dataset
-data(dat.axfors2021) ## requires estimating odds ratios
-## get log odds ratios
-ors <- escalc(measure="OR", ai=hcq_arm_event, n1i=hcq_arm_total,
-              ci=control_arm_event, n2i=control_arm_total,
-              data=dat.axfors2021)
-## filter out to consider only small doses of HCQ
-ors <- ors[ors$hcq_cq == "hcq" & ors$high_dose == "no", ]
-## sweep log odds ratio values with kappa = 2
-xseq <- seq(-5, 5, by = 0.05)
-curve <- apply(qchisq(paramSweep(ors$yi, sqrt(ors$vi), thetas = xseq),
-                      2, lower.tail = FALSE), 1,
-               function(row) pchisq(sum(row), 2*26,
-                                    lower.tail = FALSE))
-curveWgtd <- apply(paramSweep(ors$yi, sqrt(ors$vi), thetas = xseq),
-                   1, function(row) {
-                       pchisq(sum(qchisq(row, 1/ors$vi,
-                                     lower.tail = FALSE)),
-                              df = sum(1/ors$vi),
-                              lower.tail = FALSE)
-                       })
-
-plot(xseq, curveWgtd, type = 'l')
-abline(v = ors$yi, col = adjustcolor("gray50", 0.5))
-meanEst <- sum(ors$yi*1/ors$vi)/sum(1/ors$vi)
-meanSE <- sqrt(1/sum(1/ors$vi))
-
 ## school calendar data
 data(dat.konstantopoulos2011)
 schoolDat <- dat.konstantopoulos2011
@@ -1166,7 +1131,6 @@ districtPools <- lapply(schoolSplit,
                function(row) pchisq(sum(row), 2*nrow(sdat),
                                     lower.tail = FALSE))
                             })
-## do this one...super easy analysis
 
 ## plot the data
 schoolCol <- RColorBrewer::brewer.pal(11, "Set3")

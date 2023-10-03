@@ -14,7 +14,39 @@ restricted beta family. Supporting functions to generate examples
 under different alternative distributions and visualize results are
 provided alongside this core functionality.
 
-## R
+## Scripts
 
 This directory contains all extraneous data and scripts used to
-undertake the explorations of centrality in my thesis.
+undertake the explorations of centrality and the chi-squared pooled
+p-value in my thesis. For tidiness, simulation outputs (which are
+often called by other scripts) are stored in the results subdirectory.
+Briefly:
+
+- **poolFunctions.R**: essentially a prototype of pooledCentR, this
+  contains similar functions to those found in the package along with
+  many other helpful functions used throughout these scripts
+- **pooledChi.R**: reads in many simulation results and generates
+  plots to communicate these results, includes some rejection boundary
+  and power curve investigations not included in my thesis
+- **betaCentrality.R**: generates side-by-side plots of beta densities
+  and the corresponding curves of the chi-square pooled p-value by
+  kappa to demonstrate the relationship between the two (these plots
+  are seen in Chapters 4 and 6) and simulate the null many times to
+  generate reference quantiles
+- **chiMapPlot.R**: processes power data from simulations using the
+  chi-squared pooled p-value to create the data for functionality in
+  pooledCentR
+- **chiMap.R**: computes the power of the chi-square pooled p-value
+  for a range of kappa values over a range of parameter settings (the
+  simulation described in Section 4.7.2 of my thesis)
+- **metaPooling**: investigates the use of the chi-squared pooling
+  function to combine parameter estimates in meta-analysis through
+  numerous simulation studies and a real data example
+
+The other script files (**simulateConstM_fullgrid.R**,
+**simulateConstM.R**, **simulateVarM_fullgrid.R**, **simulateVarM.R**)
+are iterations of jobs meant to be run on a machine without human
+intervention, and so are not generally very accessible. They run the
+power simulations in Sections 4.4 and 4.6.2 which compare the
+chi-squared pooled p-value to the uniformly most powerful pooled
+p-value.

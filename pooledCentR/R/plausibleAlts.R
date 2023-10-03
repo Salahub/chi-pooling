@@ -50,7 +50,7 @@ altFrequencyMat <- function(logKappaRange, logW = FALSE) {
     }
     if (!any(kapInd)) { # if interval is between simulation steps
         kapInd <- logical(length(kapSeq))
-        kapInd[which.min(abs(kapSeq - mean(kaps)))] <- TRUE
+        kapInd[which.min(abs(kapSeq - mean(logKappaRange)))] <- TRUE
     }
     ## aggregate
     apply(maskMat[,,kapInd], c(1,2), sum)

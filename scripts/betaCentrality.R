@@ -1,3 +1,4 @@
+## FUNCTIONS #########################################################
 ## custom plotting function with narrow margins
 narrowPlot <- function(xgrid, ygrid, main = "", xlab = "", ylab = "",
                        xticks = xgrid, yticks = ygrid,
@@ -102,7 +103,8 @@ simBetaMix <- function(p = 0.5, b1 = list(a = 1, b = 1),
 }
 
 ## load the null curve min quantiles (100,000 reps)
-nullQuants <- readRDS("curveMinQuantiles.Rds")
+nullQuants <- readRDS("./results/curveMinQuantiles.Rds")
+
 
 ## SINGLE DENSITY ####################################################
 ##' cases for chapter
@@ -154,6 +156,7 @@ text(x = rep(3.95, 3), labels = quantLevs, cex = 0.6, xpd = NA,
      adj = c(0.2, 0.5))
 dev.off()
 
+
 ## MIXTURE ###########################################################
 ##' settings to include:
 ##' (0.1, 1), (1, 1), n = 1e2, p = 0.05
@@ -204,9 +207,11 @@ text(x = rep(3.95, 3), labels = quantLevs, cex = 0.6, xpd = NA,
      adj = c(0.2, 0.5))
 dev.off()
 
+
 ## NULL QUANTILES ####################################################
 ##' get min values across curves for the null case
-##' meant to be run in a large computing environment with many cores
+##' meant to be run in a large computing environment with many cores,
+##' as it is computationally intensive and takes a while
 tol <- 1e6 # tolerance for load balancing
 nsim <- 1e5 # number of simulations
 M <- c(2, 10, 100, 500, 1000, 10000) # sample sizes
@@ -234,4 +239,4 @@ nullCurves <- parLapply(clust, # run batches across cluster
 stopCluster(clust)
 curvesByM <- split(nullCurves, Ms)
 nullCurves <- lapply(testM, function(el) do.call(cbind, el))
-saveRDS(list(Ms, nullCurves), file = "nullCurves.Rds")
+saveRDS(list(Ms, nullCurves), file = "./results/nullCurves.Rds")

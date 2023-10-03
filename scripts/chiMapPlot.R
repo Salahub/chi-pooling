@@ -1,108 +1,17 @@
-source("poolFunctions.R")
+library(pooledCentR)
 
-## binomial difference function
+## FUNCTIONS #########################################################
+## binomial difference function comparing an observed power to the
+## maximum value observed
 binDiff <- function(p, mx, crit = -1.96) {
-    pc <- (p + mx)/2
+    pc <- (p + mx)/2 # pooled power
     notless <- (p - mx)/sqrt(pc*(1-pc)*2/nsim) > crit
-    notless[is.na(notless)] <- TRUE
+    notless[is.na(notless)] <- TRUE # handle zeros
     notless
 }
 
-## get the max for each, compute z-scores, take the smallest not
-## significantly different from the max
-leastMax <- function(p) {
-    eqmax <-
-    eqmax[is.na(eqmax)] <- TRUE # fix 1, 1 case
-    first <- which(eqmax)[1]
-    if (all(eqmax)) NA else first
-}
-
-largestMax <- function(p) {
-    mx <- max(p)
-    pc <- (p + mx)/2
-    eqmax <- (p - mx)/sqrt(pc*(1-pc)*2/nsim) > -1.96
-    eqmax[is.na(eqmax)] <- TRUE # fix 1, 1 case
-    last <- which(eqmax)[sum(eqmax)]
-    if (all(eqmax)) NA else last
-}
-
-## helper to make plotting easier
-powerHeatMap <- function(mat, main = "",
-                         pal = hcl.colors(17,
-                                          palette = "Temps"),
-                         legendLabs = c(-8, -4, 0, 4, 8),
-                         legendTitle = expression(paste("log",
-                                                        kappa))) {
-    image(mat, xaxt = "n", yaxt = "n", col = pal,
-          ylab = "", xlab = "", main = "")
-    mtext(main, side = 3, line = 0, cex = 0.8) # main
-    mtext(expression(eta), side = 2, line = 1, cex = 0.8) # ylab
-    mtext("logD(a,w)", side = 1, line = 1, padj = 0, cex = 0.8) # xlab
-    ## add ticks
-    mtext(side = 1, at = seq(0, 1, by = 0.25), text = "|", line = 0,
-          cex = 0.5, padj = -2)
-    mtext(text = seq(-5, 5, by = 2.5), at = seq(0, 1, by = 0.25),
-          side = 1, cex = 0.8)
-    mtext(side = 2, at = seq(0, 1, by = 0.2), text = "|", line = 0,
-          cex = 0.5, padj = 1)
-    mtext(text = seq(0, 1, by = 0.2), at = seq(0, 1, by = 0.2),
-          side = 2, cex = 0.8)
-    bds <- par()$usr
-    rasterImage(as.raster(matrix(rev(pal), ncol = 1)),
-                bds[2] + 0.02, 0.2, bds[2] + 0.05, 0.8, xpd = NA)
-    rect(bds[2] + 0.02, 0.2, bds[2] + 0.05, 0.8, xpd = NA)
-    text(x = bds[2] + 0.035, y = 0.82, xpd = NA, cex = 0.8,
-         labels = legendTitle, adj = c(0.5, 0.5))
-    text(x = rep(bds[2] + 0.05, length(legendLabs)), xpd = NA,
-         y = seq(0.2, 0.8, length.out = length(legendLabs)),
-         labels = legendLabs, cex = 0.8,
-         adj = c(-0.3,0.5))
-}
-
-## helper to make plotting easier
-alternativeHeatMap <- function(mat, main = "", pal = NULL, ...) {
-    if (is.null(pal)) {
-        pal <- colorRampPalette(c("white",
-                                  "firebrick"))(20)
-    }
-    image(mat, xaxt = "n", yaxt = "n", col = pal, ylab = "", xlab = "",
-          main = main, ...)
-    mtext(main, side = 3, line = 0, cex = 0.8) # main
-    mtext(expression(eta), side = 2, line = 1, cex = 0.8) # ylab
-    mtext("lnD(a,w)", side = 1, line = 1, padj = 0, cex = 0.8) # xlab
-    ## add ticks
-    mtext(side = 1, at = seq(0, 1, by = 0.25), text = "|", line = 0,
-          cex = 0.5, padj = -2)
-    mtext(text = seq(-5, 5, by = 2.5), at = seq(0, 1, by = 0.25),
-          side = 1, cex = 0.8)
-    mtext(side = 2, at = seq(0, 1, by = 0.2), text = "|", line = 0,
-          cex = 0.5, padj = 1)
-    mtext(text = seq(0, 1, by = 0.2), at = seq(0, 1, by = 0.2),
-          side = 2, cex = 0.8)
-    bds <- par()$usr
-    rowDist <- rowSums(mat, na.rm = TRUE)
-    colDist <- colSums(mat, na.rm = TRUE) # marginal distributions
-    vboxBds <- c(bds[2], bds[2] + 0.1, bds[3:4])
-    hboxBds <- c(bds[1:2], bds[4], bds[4] + 0.1)
-    ## density boxes
-    rect(vboxBds[1], vboxBds[3], vboxBds[2], vboxBds[4], xpd = NA)
-    rect(hboxBds[1], hboxBds[3], hboxBds[2], hboxBds[4], xpd = NA)
-    ## add marginal histograms
-    vseq <- seq(vboxBds[3], vboxBds[4],
-                length.out = length(colDist) + 1)
-    rect(vboxBds[1], vseq[1:length(colDist)],
-         vboxBds[1] + 0.9*diff(vboxBds[1:2])*(colDist/max(colDist)),
-         vseq[2:(length(colDist) + 1)], xpd = NA,
-         col = adjustcolor("firebrick", 0.5))
-    hseq <- seq(hboxBds[1], hboxBds[2],
-                length.out = length(rowDist) + 1)
-    rect(hseq[1:length(rowDist)], hboxBds[3],
-         hseq[2:(length(rowDist) + 1)], xpd = NA,
-         hboxBds[3] + 0.9*diff(hboxBds[3:4])*(rowDist/max(rowDist)),
-         col = adjustcolor("firebrick", 0.5))
-}
-
-## convolve with 5x5 gaussian filter
+## function to convolve two matrices, the default uses a 5x5 gaussian
+## filter to reduce noise
 smoothPower <- function(x, filt = gFilt) {
     dims <- dimnames(x) # before changing dimensions
     nullCol <- x[,1]
@@ -112,7 +21,7 @@ smoothPower <- function(x, filt = gFilt) {
     xpd <- rbind(x[c(2,1), ], x, x[c(nr, nr-1),])
     xpd <- cbind(xpd[, c(2,1)], xpd, xpd[, c(nc, nc-1)]) # x padded
     conv <- matrix(NA, nrow = nr, ncol = nc)
-    for (ii in (1:nr)) {
+    for (ii in (1:nr)) { # convolution steps
         for (jj in (1:nc)) {
             ix <- ii + 2
             jx <- jj + 2
@@ -187,9 +96,9 @@ gFilt <- gaussFilt/sum(gaussFilt)
 
 
 ## LOADING ###########################################################
-## read in the power data
-#dataFile <- "chiPowersMap80.Rds" # log(w)
-dataFile <- "chiPowersMap80_unifW.Rds"
+## read in the power data from a large simulation
+#dataFile <- "./results/chiPowersMap80.Rds" # log(w)
+dataFile <- "./results/chiPowersMap80_unifW.Rds"
 chiPowers <- readRDS(dataFile)
 ## make into single data frame
 powdf <- cbind(chiPowers$pars, power = chiPowers$chi)
@@ -213,16 +122,17 @@ nullArr <- array(0, dim = c(81, 81, length(kapSeq)),
                                  "m1" = 0:80,
                                  "logk" = as.character(kapSeq)))
 
-## clean up
+## PROCESSING: USED TO GENERATE DATA MASKED MATRICES FOR PACKAGE #####
+## clean up the log divergences
 powdf$logD <- round(powdf$logD, 3)
 powRegD <- powdf[powdf$logD %in% as.character(logDseq),]
 
-## split by logw and compute each case separately
+## split the power data by logw and compute each case separately
 pow_byW <- split(powRegD[, c("m1", "logD", "k", "power")],
                  if (grepl("unifW", dataFile)) {
                      powRegD$w
                  }else log(powRegD$w))
-## arrange as arrays
+## arrange each case as an array
 pow_byW <- lapply(pow_byW,
                   function(df) {
                       tapply(df$power,
@@ -269,7 +179,13 @@ sameMaxMask <- Reduce(accumArr, sameMaxMask_byW, nullArr)
 ## scale this
 maxProp <- sweep(sameMaxMask, c(1,2), caseMat, `/`)
 
-## plots for the paper
+## PLOTS #############################################################
+##' everything up until here is effectively used to generate the data
+##' used in the marbR package for the altFrequencyMat function, and
+##' the display and final tidying of the data has been completed by
+##' functions in the package
+
+## plots for the paper (Figs 4.15 and 4.16)
 ## -8 -8
 ## -4 -4
 ## -1 -1
@@ -279,22 +195,6 @@ maxProp <- sweep(sameMaxMask, c(1,2), caseMat, `/`)
 ## 4 4
 ## 8 8
 ## select indices by kappa
-kaps <- c(log(2),log(2))
-kapInd <- kapSeq <= kaps[2] & kapSeq >= kaps[1]
-if (!any(kapInd)) {
-    kapInd <- logical(length(kapSeq))
-    kapInd[which.min(abs(kapSeq - mean(kaps)))] <- TRUE
-}
-## aggregate indices and standardize
-kapMat <- apply(sameMaxMask[,,kapInd], c(1,2), sum)#/sum(kapInd)
-## apply the mask to every slice
-kapMasked <- sameMaxMask
-for (ii in seq_along(kapSeq)) {
-    kapMasked[,,ii][!maskMat] <- NA
-}
-## mask this match
-kapMask <- kapMat; kapMask[!maskMat] <- NA
-
 ## clean up name variables
 kpnm <- as.character(kaps)
 if (length(unique(kpnm)) == 1) kpnm <- kpnm[1]
@@ -304,10 +204,7 @@ suffix <- if (grepl("unifW", dataFile)) "unifW" else ""
 png(paste0("regionPlot", paste(kpnm, collapse = "-"), suffix, ".png"),
     width = 3, height = 3, units = "in", res = 480)
 par(mar = c(2.1, 2.1, 1.5, 1.5))
-alternativeHeatMap(kapMask, main = "")
-                   #breaks = seq(-0.5, 12.5*diff(kaps), by = 1))
-#mtext(bquote("Alternatives for ln"*kappa==.(kap)),
-#      line = 1.5, cex = 0.8)
+marHistHeatMap(altFrequencyMat(c(log(2), log(2))))
 abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.25),
        col = adjustcolor("grey50", 0.5), lty = 2)
 dev.off()
