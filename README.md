@@ -12,7 +12,10 @@ also contains an implementation of the chi-squared pooled p-value and
 the uniformly most powerful (UMP) pooled p-value for a particular
 restricted beta family. Supporting functions to generate examples
 under different alternative distributions and visualize results are
-provided alongside this core functionality.
+provided alongside this core functionality. The package can be
+downloaded via the command `install_github("Salahub/chi-pool",
+subdir="pooledCentR")` using `install_github` from the `devtools`
+package in R.
 
 ## Scripts
 
