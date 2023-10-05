@@ -60,7 +60,7 @@ addQuantPoly <- function(mat, qnts = c(0.005, 0.025, 0.25),
                   rev(apply(mat, 1, quantile,
                             probs = 1-qn))),
                 col = adjustcolor("gray", 0.25), border = NA)
-        if (labpos[1] == "left") {
+        if (labpos[1] == "left") { # change label positions...
             xind <- 1
             adj <- c(0, 0.5)
         } else if (labpos[1] == "right") {
@@ -71,25 +71,30 @@ addQuantPoly <- function(mat, qnts = c(0.005, 0.025, 0.25),
             yq <- 1-qn
         } else if (labpos[2] == "bottom") {
             yq <- qn
-        }
-        text(x = log(kseq[xind], 10),
+        } # ...these can be modified to make them legible
+        text(x = log(kseq[xind], 10), # labels
              y = quantile(mat[xind,], yq),
              labels = 1-2*qn, adj = adj, ...)
     }
-    lines(x = log(kseq, 10),
+    lines(x = log(kseq, 10), # median line
           y = apply(mat, 1, median))
 }
 
-## parameter sweep function
+## parameter sweep function, generates p-values given estimates,
+## their standard deviations, candidate combined estimates, and a
+## p-value function
 paramSweep <- function(mus, sds, thetas, pfun = pnorm) {
     mus2 <- rep(mus, each = length(thetas))
-    sds2 <- rep(sds, each = length(thetas))
+    sds2 <- rep(sds, each = length(thetas)) # vectorize operation
     stdDs <- abs((mus2 - rep(thetas, times = length(mus)))/sds2)
     matrix(2*pfun(q = stdDs, lower.tail = FALSE),
-           nrow = length(thetas))
+           nrow = length(thetas)) # convert to matrix
 }
 
-## sweeping with kappa afterwards
+## assuming the output of a paramSweep call, this function sweeps
+## through each collection of p-values for proposed combined
+## estimates and then computes the pooled p-value over a range of
+## kappa values in the chi-squared pooled p-value
 kappaSweep <- function(ps, np, kseq = exp(seq(-8, 8, by = 0.1))) {
     sapply(kseq,
            function(kap) {
@@ -101,27 +106,29 @@ kappaSweep <- function(ps, np, kseq = exp(seq(-8, 8, by = 0.1))) {
            })
 }
 
-## the case of inhomogeneous means (i.e. biased means)
+## the following functions generate particular meta-analysis settings
+## 1. the case of inhomogeneous means (i.e. no shared underlying mean)
 inhomNormal <- function(npop, ngroup, mns = runif(-2, 2, ngroup),
                         sd = 1) {
     obs <- rep(mns, npop/ngroup) + rnorm(npop, mean = 0, sd = sd)
     grp <- rep(1:ngroup, npop/ngroup)
     cbind(x = obs, group = grp)
 }
-## the fixed effects model generation function
+## 2. a fixed effects model generation function with equal sample
+## sizes
 fixedNormal <- function(npop, ngroup, mn = 0, sd = 1) {
     obs <- rnorm(npop, mean = mn, sd = sd)
     grp <- sample(rep(1:ngroup, npop/ngroup))
     cbind(x = obs, group = grp)
 }
-## fixed normal with unbalanced data
+## 3. fixed effects with different sample sizes
 fixedNormalUB <- function(npop, groups = sample(rep(1:8, npop/8)),
                           mn = 0, sd = 1) {
     obs <- rnorm(npop, mean = mn, sd = sd)
     grp <- groups
     cbind(x = obs, group = grp)
 }
-## the random effects model generation function
+## 4. random effects model generation function
 randomNormal <- function(npop, ngroup, mn = 0, mnsd = 1,
                          sd = 1) {
     mns <- rnorm(ngroup, mean = mn, sd = mnsd)
@@ -130,12 +137,14 @@ randomNormal <- function(npop, ngroup, mn = 0, mnsd = 1,
     cbind(x = obs, group = grp)
 }
 
-## wrapper to generate meta-analysis results
+## this wrapper generates nsim simulated meta-analysis results using
+## repeated calls to genFn based on the settings provided in further
+## arguments
 simMetaStudies <- function(genFn, nsim = 1e3, npop = 240,
                            ngroup = 8) {
     muMat <- sdMat <- matrix(nrow = nsim, ncol = ngroup)
     nMat <- matrix(nrow = nsim, ncol = ngroup)
-    for (ii in 1:nsim) {
+    for (ii in 1:nsim) { # repeat generation nsim times
         sim <- genFn(npop, ngroup) # generate data using genFun
         group <- sim[, "group"]
         obs <- sim[, "x"]
@@ -147,7 +156,10 @@ simMetaStudies <- function(genFn, nsim = 1e3, npop = 240,
     list(means = muMat, sds = sdMat, ns = nMat)
 }
 
-## convert meta-analyses to p-values based on a probability function
+## this function takes a probability generating function which
+## gives p-values (pfun) for estimates for each in a range of
+## candidate combined estimate values (thetas) and applies this to
+## every collection of estimates in studies
 metaToP <- function(pfun, studies, thetas) {
     simplify2array(lapply(thetas,
                           function(x) {
@@ -156,34 +168,46 @@ metaToP <- function(pfun, studies, thetas) {
                           }))
 }
 
-## the t and normal pfuns
+## the following functions accept x (a candidate combined estimate),
+## mus (observed estimates), sds (corresponding standard deviations),
+## and ns (corresponding sample sizes) and return p-values for each
+## estimate presuming x is the true population value
+## 1. a function based on normal p-values
 pfunNorm <- function(x, mus, sds, ns) {
     2*pnorm(-abs(mus - x)/sds)
 }
+## 2. a function based on t_{n-1} distribution p-values
 pfunT <- function(x, mus, sds, ns) {
     2*pt(-abs(mus - x)/sds, df = ns - 1)
 }
 
-## convert p-values to chi pool estimates for a range of kappa
+## given p-values resulting from a sweep of some pfun over a range of
+## candidate thetas over a bunch of experimental results, this
+## converts every group of p-values to chi pool estimates for every
+## kappa in kseq
 chiMetaSweep <- function(ps, kseq = exp(seq(-8, 8, by = 0.1))) {
-    M <- dim(ps)[2]
+    M <- dim(ps)[2] # number of p-values
     arr <- simplify2array(lapply(
-        kseq,
+        kseq, # for every kappa
         function(k) {
-            pchisq(apply(qchisq(ps, k, lower.tail = FALSE),
+            pchisq(apply(qchisq(ps, k, lower.tail = FALSE), # pool ps
                          c(1,3), sum),
                    df = M*k, lower.tail = FALSE)
         }))
-    aperm(arr, c(1,3,2))
+    aperm(arr, c(1,3,2)) # rear
 }
 
-## weighted chi computation
+## weighted chi computation: this is an extension not covered in the
+## thesis document, but applies Lancaster's weighting to the chi
+## pooling function where each p-value is converted by a different
+## chi-squared quantile with degrees of freedom inversely proportional
+## to the variance
 chiWeighted <- function(ps, studies) {
-    vs <- studies$sds
+    vs <- studies$sds # get standard deviations
     K <- nrow(vs)
-    wgts <- 1/vs^2
-    t(sapply(1:nrow(wgts),
-           function(ii) {
+    wgts <- 1/vs^2 # inverse variance
+    t(sapply(1:nrow(wgts), # applies the chi pooled p-value with
+           function(ii) {  # different dfs for each p to the data
                pmat <- ps[ii,,]
                pchisq(apply(pmat, 2,
                             function(col) {
@@ -197,20 +221,22 @@ chiWeighted <- function(ps, studies) {
            }))
 }
 
-## safe estimates for a range of cutoffs
+## safe estimates for a range of cutoffs, produces NAs rather than
+## empty elements to make summaries sensible
 safeRange <- function(x) {
     if (length(x) == 0) {
         c(NA, NA)
     } else range(x)
 }
 
-## compute coverage probabilities for a given sequence of chis
+## compute coverage probabilities for a many sequences of chi pooled
+## p-values generated by a sweep of kappa values on some samples
 getChiEsts <- function(chiseqs, thetas, kseq, mn = 0,
                        cutoffs = c(0.1, 0.05, 0.02, 0.01)) {
-    ests <- matrix(thetas[apply(chiseqs, c(1,2),
+    ests <- matrix(thetas[apply(chiseqs, c(1,2), # get EME (the max)
                                      which.max)],
                      ncol = length(kseq))
-    intervals <- lapply(cutoffs,
+    intervals <- lapply(cutoffs, # get evidential regions (> cutoff)
                         function(ct) {
                             apply(chiseqs >= ct,
                                   c(1,2),
@@ -218,14 +244,15 @@ getChiEsts <- function(chiseqs, thetas, kseq, mn = 0,
                                       safeRange(thetas[which(x)])
                                   })
                         })
-    include <- lapply(intervals,
+    include <- lapply(intervals, # does this include the true value?
                       function(mat) mat[1,,] <= mn & mat[2,,] >= mn)
-    covP <- lapply(include,
+    covP <- lapply(include, # compute coverage probabilities
                    function(mat) apply(mat, 2, mean, na.rm = TRUE))
     list(ests = ests, intervals = intervals, covP = covP)
 }
 
-## and something for univariate estimates
+## a version of the above which is accepts only a single sequence
+## rather than many sequences
 getUniEsts <- function(seqs, thetas, mn = 0,
                        cutoffs = c(0.1, 0.05, 0.02, 0.01)) {
     ests <- thetas[apply(seqs, 1, which.max)]
@@ -243,13 +270,14 @@ getUniEsts <- function(seqs, thetas, mn = 0,
     list(ests = ests, intervals = intervals, covP = covP)
 }
 
-## the mean estimate function
+## the mean estimate function, performs classical combination of
+## estimates by weighting estimates by the inverse of their variances
 getMeanEsts <- function(sim, cutoffs = c(0.1, 0.05, 0.02, 0.01)) {
-    mns <- sim$means
-    wgts <- 1/sim$sds^2
+    mns <- sim$means # estimates
+    wgts <- 1/sim$sds^2 # weights
     wgted <- mns*(wgts)
     ests <- rowSums(wgted)/rowSums(wgts)
-    se <- sqrt(1/rowSums(wgts))
+    se <- sqrt(1/rowSums(wgts)) # resulting standard error
     intervals <- lapply(cutoffs,
                         function(a) {
                             matrix(rep(ests, each = 2) +
@@ -262,34 +290,33 @@ getMeanEsts <- function(sim, cutoffs = c(0.1, 0.05, 0.02, 0.01)) {
     list(ests = ests, intervals = intervals, covP = covP)
 }
 
-## plot a realization based on the simulated data
+## plot a realization based on simulated data
 plotRealization <- function(chi, means, sds, thetas, kseq,
                             cols = 1:4, kaps = c(1, 41, 81),
                             refKap = 41, legend = TRUE) {
+    ## lines for chosen kappa indices
     for (ii in kaps) lines(thetas, chi[ii,], type = 'l',
                            col = if (ii <= refKap-1) {
                                      adjustcolor(cols[1], 0.8)
                                  } else if (ii == refKap) {
                                      adjustcolor(cols[2], 0.8)
                                  } else adjustcolor(cols[3], 0.8))
+    ## classical combined estimate
     meanEst <- sum(means/sds^2)/sum(1/sds^2)
     lines(x = c(meanEst - qnorm(0.975)/sqrt(sum(1/sds^2)),
                 meanEst + qnorm(0.975)/sqrt(sum(1/sds^2))),
           y = rep(-0.1, 2))
     points(meanEst, y = -0.1, cex = 0.8)
+    ## plot each estimate with a reference line
     for (ii in seq_along(means)) {
         lines(x = c(means[ii] - 2*sds[ii], means[ii] + 2*sds[ii]),
               y = rep(-0.025 - 0.05*(ii-1)/(length(means)-1), 2),
               lwd = 1, col = adjustcolor("black", 1/2))
     }
-    #abline(v = 0, col = adjustcolor("black", 0.8), lty = 2, lwd = 1)
     abline(v = meanEst, col = adjustcolor("black", 0.6), lwd = 1)
     abline(v = means, col = adjustcolor("gray50", 0.4))
     abline(h = 0.05, lty = 3)
-    if (legend) {
-        #legend(x = "topleft", legend = round(log(kseq[kaps], 10), 1),
-        #       lty = 1, col = cols, cex = 0.8,
-        #       title = expression(paste(log[10], "(", kappa, ")")))
+    if (legend) { # add a legend (maybe)
         temp <- legend("topleft", legend = rep("", length(kaps)),
                        text.width = strwidth("-3.5"), col = cols,
                        cex = 0.8, lty = 1, xjust = 1, yjust = 1,
@@ -301,14 +328,16 @@ plotRealization <- function(chi, means, sds, thetas, kseq,
 }
 
 ## CANONICAL EXAMPLES ################################################
-## equal variance
+## equal variance: different arrangements of estimates where all have
+## the same variance
 ## parameters
 mn <- 0
 mnstd <- 1 # sqrt(0.5)
-kseq <- exp(seq(-8, 8, by = 0.1))
-xseq <- seq(-4, 4, by = 0.01)
-cols <- RColorBrewer::brewer.pal(3, "Dark2")
-## symmetric settings
+kseq <- exp(seq(-8, 8, by = 0.1)) # kappa values
+xseq <- seq(-4, 4, by = 0.01) # estimate range
+cols <- RColorBrewer::brewer.pal(3, "Dark2") # palette
+## symmetric settings: the mean of estimates is zero and the pattern
+## is symmetric about zero
 syms <- list(c(-3.001, -1.501, -0.501, -0.051, 0.051, 0.501,
                1.501, 3.001),
              c(-2.001, -1.501, -0.501, -0.051, 0.051, 0.501,
@@ -324,14 +353,14 @@ syms.p <- simplify2array(lapply(syms, function(mns) {
 syms.pool <- chiMetaSweep(aperm(syms.p, c(3, 2, 1)), kseq = kseq)
 
 ## plot realizations
-ind <- 2
-wid <- if (ind == 2) 2.3 else 2.1
+ind <- 2 # choose a value in 1-5
+wid <- if (ind == 2) 2.3 else 2.1 # graphical parameters
 hei <- 2.3
 mars <- if (ind == 2) {
             c(1.1, 2.1, 0.1, 0.1)
         } else c(1.1, 1.1, 0.1, 0.1)
-suff <- if (mnstd == 1) "" else "sd0_5"
-leg <- ind == 2 & mnstd == 1
+suff <- if (mnstd == 1) "" else "sd0_5" # naming of files
+leg <- ind == 2 & mnstd == 1 # add a legend?
 png(paste0("syms", ind, suff, ".png"), width = wid, height = hei,
     res = 480, units = "in")
 narrowPlot(xgrid = seq(-3, 3, by = 1.5), xlab = "x",
@@ -348,7 +377,8 @@ plotRealization(syms.pool[ind,,], means = syms[[ind]],
                 legend = leg)
 dev.off()
 
-## unbalanced settings
+## unbalanced settings: the mean is no longer constant across settings
+## and the patterns of points are no longer symmetric
 unbs <- list(-c(-2.501, -1.501, -0.751, -0.301, -0.101, -0.051,
                0.051, 2.501),
              -c(-2.001,-1.901, -1.751, -1.501, -1.351, -1.121,
@@ -365,8 +395,8 @@ unbs.p <- simplify2array(lapply(unbs, function(mns) {
 ## sweep kappa values
 unbs.pool <- chiMetaSweep(aperm(unbs.p, c(3, 2, 1)), kseq = kseq)
 
-## plot realizations
-ind <- 2
+## plot realizations: same as before
+ind <- 2 # choose a value in 1-5
 wid <- if (ind == 2) 2.3 else 2.1
 hei <- 2.3
 mars <- if (ind == 2) {
@@ -390,7 +420,8 @@ plotRealization(unbs.pool[ind,,], means = unbs[[ind]],
                 legend = leg)
 dev.off()
 
-## unequal variance
+## unequal variance: the same symmetric and unbalanced settings are
+## repeated, but this time the estimates have different variances
 mnstds <- c(2, rep(1, 6), 1/2)
 ## symmetric settings
 uvsyms <- list(c(-3.001, -1.501, -0.501, -0.051, 0.051, 0.501,
@@ -407,8 +438,8 @@ uvsyms.p <- simplify2array(lapply(uvsyms, function(mns) {
 ## sweep kappa values
 uvsyms.pool <- chiMetaSweep(aperm(uvsyms.p, c(3, 2, 1)), kseq = kseq)
 
-## plot realizations
-ind <- 2
+## plot realizations: same as last two times
+ind <- 2 # choose a value in 1-5
 wid <- if (ind == 2) 2.3 else 2.1
 hei <- 2.5
 mars<- if (ind == 2) {
@@ -429,6 +460,8 @@ plotRealization(uvsyms.pool[ind,,], means = uvsyms[[ind]],
                 refKap = 88, cols = cols,
                 legend = FALSE)
 dev.off()
+## compared to the equal variance case, the evidential regions and
+## EMEs are pulled towards the less variable estimates
 
 ## unbalanced settings
 uvunbs <- list(-c(-2.501, -1.501, -0.751, -0.301, -0.101, -0.051,
@@ -448,7 +481,7 @@ uvunbs.p <- simplify2array(lapply(uvunbs, function(mns) {
 uvunbs.pool <- chiMetaSweep(aperm(uvunbs.p, c(3, 2, 1)), kseq = kseq)
 
 ## plot realizations
-ind <- 5
+ind <- 5 # choose a value in 1-5
 wid <- if (ind == 2) 2.3 else 2.1
 hei <- 2.5
 mars <- if (ind == 2) {
@@ -470,7 +503,8 @@ plotRealization(uvunbs.pool[ind,,], means = uvunbs[[ind]],
                 legend = leg)
 dev.off()
 
-## final case: adding internal points
+## final case: adding internal points between a pair of distant
+## estimates, what happens?
 addm <- list(c(-3.001, 3.001),
              c(-3.001, rep(1, 5), 3.001),
              c(-3.001, rep(1, 10), 3.001),
@@ -492,7 +526,7 @@ addm.pool <- lapply(addm.p, function(ps) {
         }))})
 
 ## plot realizations
-ind <- 1
+ind <- 1 # choose a value in 1-6
 wid <- if (ind == 1) 2.3 else 2.1
 mars <- if (ind == 1) {
             c(2.1, 2.1, 1.1, 0.1)
@@ -516,29 +550,37 @@ dev.off()
 
 
 ## SIMULATIONS #######################################################
+## the following perform more in depth simulations of different meta
+## analysis settings in order to evaluate the power and performance
+## of evidential methods
 ## settings
-mn <- 0
-std <- 2
-nsim <- 1000
-ngroup <- 8
-npop <- 240
-minQuants <- readRDS("./results/curveMinQuantiles.Rds")
-kseq <- exp(seq(-8, 8, by = 0.1))
-thetas <- seq(-1.5, 1.5, by = 0.01)
-cols <- RColorBrewer::brewer.pal(4, "Dark2")
-cutoffs <- seq(0.20, 0.01, by = -0.01)
+mn <- 0 # true mean
+std <- 2 # total standard deviation
+nsim <- 1000 # number of simulations
+ngroup <- 8 # number of groups
+npop <- 240 # total population size
+minQuants <- readRDS("./results/curveMinQuantiles.Rds") # null dist
+kseq <- exp(seq(-8, 8, by = 0.1)) # kappa sequence
+thetas <- seq(-1.5, 1.5, by = 0.01) # proposed combined estimates
+cols <- RColorBrewer::brewer.pal(4, "Dark2") # palette
+cutoffs <- seq(0.20, 0.01, by = -0.01) # evidential threshold values
 
 ## FIXED EFFECTS ##
+## consider first the case of fixed effects with equal variances
+## for every estimate
 ## compute all the features
 fixedGen <- function(np, ng) fixedNormal(np, ng,
                                          sd = std)
-set.seed(9381278)
+set.seed(9381278) # reproducibility
+## simulate the data
 fixedSim <- simMetaStudies(fixedGen, nsim = nsim, npop = npop,
                            ngroup = ngroup)
+## compute p-values
 fixedps <- metaToP(pfunT, fixedSim, thetas = thetas)
-fixedChis <- chiMetaSweep(fixedps, kseq = kseq)
-fixedMnChi <- apply(fixedChis, c(1,3), min)
-fixedwgtChi <- chiWeighted(fixedps, fixedSim)
+## compute evidential estimates
+fixedChis <- chiMetaSweep(fixedps, kseq = kseq) ## ~ 20 mins
+fixedMnChi <- apply(fixedChis, c(1,3), min) # classical estimate
+fixedwgtChi <- chiWeighted(fixedps, fixedSim) # lancaster wgts
 ## get intervals
 fixedChiInt <- getChiEsts(fixedChis, thetas = thetas, kseq = kseq,
                           cutoffs = cutoffs)
@@ -567,7 +609,7 @@ mtext(c("0.95", "0.5"), at = quantile(fixedMnInt$ests,
       side = 4, cex = 0.6, las = 1)
 dev.off()
 
-## plot estimates by kappa
+## plot estimates by kappa agaisnt the classic estimate
 kapInd <- 81
 png("metaEstvsMeanFixed.png", width = 3, height = 3, res = 480,
     units = "in")
@@ -584,6 +626,7 @@ ctind <- 20
 cutoff <- cutoffs[ctind]
 png(paste0("meta", 100*cutoff, "pctCovPFix.png"), width = 2.5,
     height = 2.5, res = 480, units = "in")
+## optionally: fit a smooth to these
 tempCovP <- lowess(fixedChiInt$covP[[ctind]], f = 1/6)$y
 tempCovP <- fixedChiInt$covP[[ctind]]
 narrowPlot(xgrid = seq(-3, 3, by = 3), ygrid = seq(0.8, 1, by = 0.05),
@@ -629,6 +672,7 @@ narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
            xlab = "a", ylab = expression(alpha))
 points(cutoffs, kapLevs, cex = 0.8)
 abline(a = 0, b = 1)
+## fit and add a linear model
 alphaA <- lm(alpha ~ a + I(a^2) - 1,
              data = data.frame(alpha = kapLevs, a = cutoffs))
 lines(seq(0, 0.2, by = 0.01),
@@ -646,6 +690,7 @@ narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
            ygrid = seq(0, 0.2, by = 0.05),
            xlab = "a", ylab = expression({1-pi}))
 points(cutoffs, 1 - covPs, cex = 0.8)
+## fit and add a linear model
 piA <- lm(pi ~ a + I(a^2) - 1,
           data = data.frame(pi = 1 - covPs, a = cutoffs))
 lines(seq(0, 0.2, by = 0.01),
@@ -706,6 +751,8 @@ dev.off()
 
 
 ## FIXED EFFECTS UNBALANCED ##
+## next: the case of fixed effects where not every estimate has
+## equal variance
 fixedGenUB <- function(np, ng) {
     grps <- sample(1:ng, size = np, replace = TRUE,
                    prob = c(3, 3, 6, 2, 2, 2, 3, 4))
@@ -713,10 +760,13 @@ fixedGenUB <- function(np, ng) {
 }
 ## generate and compute on studies
 set.seed(73183)
+## generate data
 ubSim <- simMetaStudies(fixedGenUB, nsim = nsim, npop = npop,
                         ngroup = ngroup)
+## compute p-values
 ubps <- metaToP(pfunT, ubSim, thetas = thetas)
-ubChis <- chiMetaSweep(ubps, kseq = kseq)
+## compute chi pooled p-values
+ubChis <- chiMetaSweep(ubps, kseq = kseq) ## ~ 20 mins
 ubMnChi <- apply(ubChis, c(1,3), min)
 ubwgtChi <- chiWeighted(ubps, ubSim)
 ## get intervals
@@ -757,8 +807,8 @@ mtext(c("0.95", "0.5"), at = quantile(ubMnInt$ests,
       side = 4, cex = 0.6, las = 1)
 dev.off()
 
-## plot estimates by kappa
-kapInd <- 81
+## plot evidential estimates against classical estimates
+kapInd <- 81 # 88 is fishers, 81 matches closest
 png("metaEstvsMeanUB.png", width = 3, height = 3, res = 480,
     units = "in")
 narrowPlot(xgrid = seq(-0.5, 0.5, by = 0.25),
@@ -769,8 +819,8 @@ points(ubChiInt$est[, kapInd], ubMnInt$ests, cex = 0.5, pch = 19,
        col = adjustcolor("black", 0.3))
 dev.off()
 
-## plot the coverage probabilities by kappa
-ctind <- 20
+## plot the coverage probabilities for a given kappa
+ctind <- 16
 cutoff <- cutoffs[ctind]
 png(paste0("meta", 100*cutoff, "pctCovPUB.png"), width = 2.5,
     height = 2.5, res = 480, units = "in")
@@ -779,7 +829,6 @@ narrowPlot(xgrid = seq(-3, 3, by = 3), ygrid = seq(0.8, 1, by = 0.05),
            ylab = expression(pi), xlim = c(-3.5, 3.5),
            xlab = expression(paste(log[10], "(", kappa, ")")))
 lines(log(kseq, 10), tempCovP)
-#points(log(kseq, 10), tempCovP, cex = 0.5)
 polygon(c(log(kseq, 10), rev(log(kseq, 10))),
         c(tempCovP + qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim),
           rev(tempCovP - qnorm(0.975)*sqrt(tempCovP*(1 - tempCovP)/nsim))),
@@ -820,6 +869,7 @@ narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
            xlab = "a", ylab = expression(alpha))
 points(cutoffs, kapLevs, cex = 0.8)
 abline(a = 0, b = 1)
+## fit a linear model and add this to the plot
 alphaA <- lm(alpha ~ a + I(a^2) - 1,
              data = data.frame(alpha = kapLevs, a = cutoffs))
 lines(seq(0, 0.2, by = 0.01),
@@ -837,6 +887,7 @@ narrowPlot(xgrid = seq(0, 0.2, by = 0.05),
            ygrid = seq(0, 0.2, by = 0.05),
            xlab = "a", ylab = expression({1-pi}))
 points(cutoffs, 1 - covPs, cex = 0.8)
+## fit a linear model and add this to the plot
 piA <- lm(pi ~ a - 1,
           data = data.frame(pi = 1-covPs, a = cutoffs))
 lines(seq(0, 0.2, by = 0.01),
@@ -862,9 +913,6 @@ narrowPlot(xgrid = seq(0.3, 0.5, by = 0.05),
 points(CIwid, kapWid, pch = 20, cex = 0.8,
        col = adjustcolor("black", 0.2))
 abline(0, 1)
-#points(CIwid[c(671, 208, 61)],
-#       kapWid[c(671, 208, 61)],
-#       pch = c(15, 17, 19), col = "firebrick", cex = 0.8)
 addMarHists(CIwid, kapWid, xcuts = seq(0, 1.2, by = 0.05),
             ycuts = seq(0, 1.2, by = 0.05))
 bds <- par()$usr
@@ -882,22 +930,30 @@ narrowPlot(xgrid = seq(-1.5, 1.5, by = 0.5),
            xlab = expression(x),
            ylab = expression(paste("chi(", bold(p), ";", kappa, ")")),
            addGrid = FALSE)
-plotRealization(chi = ubChis,
-                means = ubSim$means, meanEst = ubMnInt$ests,
-                thetas = thetas, kseq = kseq, cols = cols,
-                kaps = c(1, 88, 161), ind = real, refKap = 88)
+plotRealization(ubChis[real,,], means = ubSim$means[real,],
+                sds = ubSim$sds[real,],
+                thetas = thetas, kseq = kseq, kaps = c(1, 88, 161),
+                refKap = 88, cols = cols,
+                legend = leg)
 dev.off()
 
 
 ## RANDOM EFFECTS ##
+## this final case should commonly lead to a rejection of
+## homogeneity, as it explicitly simulates the estimates to have
+## different underlying means
 mnsd <- sqrt(0.5)
+## generation function
 randGen <- function(np, ng) randomNormal(np, ng, mnsd = mnsd,
                                          sd = sqrt(std^2 - mnsd^2))
 set.seed(53611707)
+## generate data
 randSim <- simMetaStudies(randGen, nsim = nsim, npop = npop,
                           ngroup = ngroup)
+## p-values
 randps <- metaToP(pfunT, randSim, thetas = thetas)
-randChis <- chiMetaSweep(randps, kseq = kseq)
+## pooled p-values
+randChis <- chiMetaSweep(randps, kseq = kseq) ## ~ 20 mins
 ## get intervals
 randChiInt <- getChiEsts(randChis, thetas = thetas, kseq = kseq,
                          cutoffs = cutoffs)
@@ -925,7 +981,8 @@ dev.off()
 kapInd <- 88 # 88  for Fisher's
 ctind <- 16
 cutoff <- cutoffs[ctind]
-pltMat <- randChiInt$intervals[[ctind]][,,kapInd]
+pltMat <- randChiInt$intervals[[ctind]][,,kapInd] # evidential
+## classical
 ##pltMat <- t(fixedInts$meanInt[order(fixedInts$meanInt[,1]),])
 pltMat <- pltMat[, order(pltMat[1, ])]
 png(paste0("poolInts", 100*cutoff, "pctRand.png"), height = 2.5,
@@ -938,8 +995,8 @@ for (ii in 1:nsim) lines(pltMat[,ii], rep(ii, 2),
                          col = adjustcolor("black", 0.2))
 abline(h = nsim*(1 - cutoff), lty = 2)
 dev.off()
+## indeed, most intervals are empty!
 
-## 0.975 is the proportion of empty intervals
 ## check for a range of sds
 mnVSeq <- seq(0.05, 3.95, by = 0.15)
 ## a list of closures with the correct variances
@@ -950,12 +1007,14 @@ randGens <- lapply(mnVSeq,
                                         mnsd = mnV,
                                         sd = sqrt(std^2 - mnV))
                        }})
-## simulate for each
+## simulate for each (lower resolution to speed it up)
 kseq2 <- exp(seq(-8, 8, by = 0.5))
 kseq2 <- c(kseq2[1:17], 2, kseq2[18:33])
 set.seed(54910913)
+## simulate data
 randSims <- lapply(randGens, simMetaStudies, nsim = nsim, npop = npop,
                    ngroup = ngroup)
+## second of these still takes ~ 20 mins
 randps <- lapply(randSims, metaToP, pfun = pfunT, thetas = thetas)
 randChis <- lapply(randps, chiMetaSweep, kseq = kseq2)
 ## get intervals
@@ -975,15 +1034,17 @@ randTests <- mapply(function(sim, mns) {
     rowSums((sweep(sim$means, 1, mns$ests, `-`)/sim$sds)^2)},
     randSims, randMn)
 randMnPow <- colMeans(pchisq(randTests, df = 7, lower.tail = FALSE) <=
-                      #0.05)
-                      0.514*0.05 + 0.891*0.05^2)
+                      #0.05) # naive threshold
+                      0.514*0.05 + 0.891*0.05^2) # corrected threshold
+## corrected threshold is based on the linear model, gives comparable
+## rejection probability as the classic test
 
-## set up as data frame
+## set these powers up as data frame for further analysis
 powerdf <- data.frame(pow = c(randRejectP),
                       expand.grid(lgk = log(kseq2, 10), a = cutoffs,
                                   taup = mnVSeq/4))
 
-## plot power contours
+## the next section plots some power contours
 ## some plotting packages
 library(ggplot2)
 library(grid)
@@ -1077,22 +1138,25 @@ library(metadat)
 library(metafor)
 
 ## school calendar data
-data(dat.konstantopoulos2011)
-schoolDat <- dat.konstantopoulos2011
-schoolDat$district <- factor(schoolDat$district)
-rm(dat.konstantopoulos2011)
+data(dat.konstantopoulos2011) # load
+schoolDat <- dat.konstantopoulos2011 # rename
+schoolDat$district <- factor(schoolDat$district) # convert to a factor
+rm(dat.konstantopoulos2011) # clean up workspace
 schoolDat <- schoolDat[order(schoolDat$district,
-                             schoolDat$yi),]
+                             schoolDat$yi),] # sort by district
 
-## plot the data
+## set up parameters to plot the data
 schoolCol <- RColorBrewer::brewer.pal(11, "Set3")
 district <- unclass(schoolDat$district)
-distRle <- rle(c(district))
-xvals <- unlist(sapply(1:11, function(ii) {
-    seq(distRle$values[ii] - 0.2,
+## determine grouped x values by district
+distRle <- rle(c(district)) # run length encoding
+xvals <- unlist(sapply(1:11, function(ii) { # determine spacing from
+    seq(distRle$values[ii] - 0.2,           # run lengths
         distRle$values[ii] + 0.2,
         length.out = distRle$lengths[ii])
 }))
+
+## plot the data
 png("metaSchoolMeans.png", width = 6, height = 3, units = "in",
     res = 480)
 narrowPlot(ygrid = seq(-1.5, 1.5, by = 0.75),
@@ -1109,19 +1173,21 @@ points(xvals,
        bg = schoolCol[unclass(schoolDat$district)])
 dev.off()
 
-## sweep of values
+## sweep potential combined estimate values
 xseq <- seq(-2, 2, by = 0.01)
+## generate p-values and combine them
 pvals <- apply(qchisq(paramSweep(schoolDat$yi,
                                  sqrt(schoolDat$vi),
                                  thetas = xseq),
                       2, lower.tail = FALSE), 1,
                function(row) pchisq(sum(row), 2*nrow(schoolDat),
                                     lower.tail = FALSE))
-## strong evidence of heterogeneity
-## pool by district
+## strong evidence of heterogeneity...
+
+## maybe pool by district separately
 schoolSplit <- split(schoolDat[, c("yi", "vi")],
                      schoolDat$district)
-## pool for each district
+## apply the process to each district
 districtPools <- lapply(schoolSplit,
                         function(sdat) {
                             apply(qchisq(paramSweep(sdat$yi,

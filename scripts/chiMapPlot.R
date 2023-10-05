@@ -153,7 +153,7 @@ sameMax_byW <- mapply(function(smth, mx) sweep(smth, c(1,2),
                                                mx, binDiff),
                       smth_byW, max_byW)
 
-## reduce this
+## accumulate these results
 sameMax <- Reduce(accumArr, sameMax_byW, init = nullArr)
 
 ## two possible masks seem reasonable
@@ -182,7 +182,7 @@ maxProp <- sweep(sameMaxMask, c(1,2), caseMat, `/`)
 ## PLOTS #############################################################
 ##' everything up until here is effectively used to generate the data
 ##' used in the marbR package for the altFrequencyMat function, and
-##' the display and final tidying of the data has been completed by
+##' the display and final tidying of the data is completed by
 ##' functions in the package
 
 ## plots for the paper (Figs 4.15 and 4.16)
@@ -195,6 +195,7 @@ maxProp <- sweep(sameMaxMask, c(1,2), caseMat, `/`)
 ## 4 4
 ## 8 8
 ## select indices by kappa
+kaps <- c(-10, -6)
 ## clean up name variables
 kpnm <- as.character(kaps)
 if (length(unique(kpnm)) == 1) kpnm <- kpnm[1]
@@ -204,7 +205,7 @@ suffix <- if (grepl("unifW", dataFile)) "unifW" else ""
 png(paste0("regionPlot", paste(kpnm, collapse = "-"), suffix, ".png"),
     width = 3, height = 3, units = "in", res = 480)
 par(mar = c(2.1, 2.1, 1.5, 1.5))
-marHistHeatMap(altFrequencyMat(c(log(2), log(2))))
+marHistHeatMap(altFrequencyMat(kaps))
 abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.25),
        col = adjustcolor("grey50", 0.5), lty = 2)
 dev.off()

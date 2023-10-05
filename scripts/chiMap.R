@@ -28,7 +28,7 @@ preparams <- data.frame(a = rep(aseq, times = length(m1seq)),
                         logD = rep(logD, times = length(m1seq)))
 params <- data.frame(preparams, k = rep(kseq, each = nrow(preparams)))
 
-## helper to modify powersim for the particular case of chiSimPower
+## modify powerSim for the particular case of chi pooling
 chiSimPower <- function(parRow, alpha = 0.05) {
     b <- bwa(parRow[2], parRow[1])
     rands <- cbind(matrix(rbeta(parRow[3]*nsim, parRow[1], b),
