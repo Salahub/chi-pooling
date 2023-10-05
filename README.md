@@ -45,6 +45,9 @@ Briefly:
 - **metaPooling**: investigates the use of the chi-squared pooling
   function to combine parameter estimates in meta-analysis through
   numerous simulation studies and a real data example
+- **otherMethods**: implements several other pooled p-values along
+  with functions that display their rejection regions in the case of
+  two p-values being combined
 
 The other script files (**simulateConstM_fullgrid.R**,
 **simulateConstM.R**, **simulateVarM_fullgrid.R**, **simulateVarM.R**)
