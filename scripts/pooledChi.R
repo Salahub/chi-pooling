@@ -568,7 +568,36 @@ dev.off()
 ## another aspect of this not explored is that of rejection boundaries
 ## and regions, which are visualized in this section for the chi
 ## and many others
-## the image showing the range of rejection regions
+
+## the following plots follow those in Loughin (2004)
+## some power curve plots: generate curves
+powerTip <- powerCrv(crv = tipCrv, crvArgs = list(),
+                     medianScale = TRUE)
+power0.005 <- powerCrv(crvArgs = list(k = 0.005), medianScale = TRUE)
+power0.05 <- powerCrv(crvArgs = list(k = 0.5), medianScale = TRUE)
+power0.5 <- powerCrv(crvArgs = list(k = 0.5), medianScale = TRUE)
+power1 <- powerCrv(crvArgs = list(k = 1), medianScale = TRUE)
+power2 <- powerCrv(crvArgs = list(k = 2), medianScale = TRUE)
+power20 <- powerCrv(crvArgs = list(k = 20), medianScale = TRUE)
+power200 <- powerCrv(crvArgs = list(k = 200), medianScale = TRUE)
+powerSto <- powerCrv(crv = normCrv, crvArgs = list(),
+                     medianScale = TRUE)
+
+## plot the curves
+x <- seq(-7, -1, length.out = 7)
+plot(x = x, y = x, type = 'n', # xaxs = 'i', yaxs = 'i',
+     xlab = expression(paste(log[2], "(Median ",b[1], ")")), xaxt = 'n',
+     ylab = expression(paste(log[2], "(Median ",b[2], ")")), yaxt = 'n')
+axis(1, x, labels = x)
+axis(2, x, labels = x)
+abline(h = x, v = x, lty = 2, col = "gray50")
+with(power20,
+     contour(x = log(medb1, base = 2), y = log(medb2, base = 2),
+             z = matrix(power, ncol = 100), add = TRUE,
+             levels = c(0.5, 0.65, 0.8, 0.9), method = "simple",
+             col = "black"))
+
+## this image shows the range of rejection regions
 x <- exp(seq(-7, 0, by = 0.01)) # x values (log scale)
 kseq <- exp(seq(-8, 8, by = 1)) # k values (log scale)
 axislogk <- seq(-7, 0, by = 1) # for nice labels
@@ -612,7 +641,12 @@ for (ii in seq_along(ticks)) {
 dev.off()
 
 ## other methods in the same plot region
-source("~/Research/Core/experiments/3. Pooled pvals/poolFunctions.R")
+source("otherMethods.R")
+x <- exp(seq(-7, 0, by = 0.01)) # x values (log scale)
+kseq <- exp(seq(-8, 8, by = 1)) # k values (log scale)
+axislogk <- seq(-7, 0, by = 1) # for nice labels
+chipal <- colorRampPalette( # define a palette
+    brewer.pal(3, "Dark2")[c(2,3)] )(length(kseq)+2)
 png("ChiOtherMethods.png", width = 5, height = 5, units = "in",
     res = 400)
 plot(x = x, y = x, type = 'n', xlab = expression(paste(log[e],p[1])),
@@ -628,43 +662,15 @@ for (mth in names(methsNiceName)) lines(x, methsNiceName[[mth]](x),
                                         lty = 1, col = pal[mth])
 lines(c(0, rep(1-0.95^0.5, 2), 1), c(1, 1, rep(1 - 0.95^0.5, 2)),
       lwd = 2, lty = 2)
-text(1-0.95^0.5, 1-0.95^0.5, expression(g[Tip]), adj = c(1,1))
+text(1-0.95^0.5, 1-0.95^0.5, expression(Tip), adj = c(1,1))
 lines(x, Stocrv(x), lwd = 2, lty = 2)
-text(x[stoInd], Stocrv(x[stoInd]), expression(g[Sto]), adj = c(0,0))
+text(x[stoInd], Stocrv(x[stoInd]), expression(Sto), adj = c(0,0))
 legend(x = "bottomleft", title = "Method", lty = 1,
-       legend = c(expression(g[Bon]), expression(g[Tip]),
-                  expression(g[Fis]), expression(g[Sto]),
-                  expression(g[CV]), expression(g[Wil]),
-                  expression(g[Edg]), expression(g[MG]),
-                  expression(g[HMP]),
-                  expression(paste(g[HMP], " (exact)"))),
+       legend = c(expression(Bon), expression(Tip),
+                  expression(Fis), expression(Sto),
+                  expression(CV), expression(Wil),
+                  expression(Edg), expression(MG),
+                  expression(HMP),
+                  expression(paste(HMP, " (exact)"))),
        col = pal[names(methsNiceName)], bg = "white", cex = 0.8)
 dev.off()
-
-## the following plots follow those in Loughin (2004)
-## some power curve plots: generate curves
-powerTip <- powerCrv(crv = tipCrv, crvArgs = list(),
-                     medianScale = TRUE)
-power0.005 <- powerCrv(crvArgs = list(k = 0.005), medianScale = TRUE)
-power0.05 <- powerCrv(crvArgs = list(k = 0.5), medianScale = TRUE)
-power0.5 <- powerCrv(crvArgs = list(k = 0.5), medianScale = TRUE)
-power1 <- powerCrv(crvArgs = list(k = 1), medianScale = TRUE)
-power2 <- powerCrv(crvArgs = list(k = 2), medianScale = TRUE)
-power20 <- powerCrv(crvArgs = list(k = 20), medianScale = TRUE)
-power200 <- powerCrv(crvArgs = list(k = 200), medianScale = TRUE)
-powerSto <- powerCrv(crv = Stocrv, crvArgs = list(),
-                     medianScale = TRUE)
-
-## plot the curves
-x <- seq(-7, -1, length.out = 7)
-plot(x = x, y = x, type = 'n', # xaxs = 'i', yaxs = 'i',
-     xlab = expression(paste(log[2], "(Median ",b[1], ")")), xaxt = 'n',
-     ylab = expression(paste(log[2], "(Median ",b[2], ")")), yaxt = 'n')
-axis(1, x, labels = x)
-axis(2, x, labels = x)
-abline(h = x, v = x, lty = 2, col = "gray50")
-with(powerSto,
-     contour(x = log(medb1, base = 2), y = log(medb2, base = 2),
-             z = matrix(power, ncol = 100), add = TRUE,
-             levels = c(0.5, 0.65, 0.8, 0.9), method = "simple",
-             col = "black"))
