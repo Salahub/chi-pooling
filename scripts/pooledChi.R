@@ -106,10 +106,10 @@ dev.off()
 ## IMAGE :: the distribution of lw for different w values (Figure 4.2)
 set.seed(1782491)
 wVals <- c(exp(-6), exp(-3), 0.5, 1)
-lwDat <- lapply(wVals,
+lwDat <- lapply(wVals, # uniform samples
                 function(w) matrix(runif(1e5*10), ncol = 10))
 lwDists <- mapply(function(dt, w) apply(dt, 1, hrBeta, w = w),
-                  lwDat, wVals)
+                  lwDat, wVals) # statistic values
 ## plot densities of these
 reprs <- c(1, 2, 3, 4) # select densities
 lwmax <-  max(abs(lwDists)) # limits
@@ -501,61 +501,9 @@ centTab <- log10(sapply(Mseq,
                                          M = m,
                                          interval = c(0, 1e4),
                                          tol = .Machine$double.eps^0.75)))
+## automate the conversion of this to text for the thesis
 paste(apply(cbind(c("", Mseq), t(cbind(centSeq, round(centTab, 1)))),
             1, paste, collapse = " & "), collapse = "\\")
-
-## plot the central rejection level for the chi method by M, kappa
-png("pcChiPool.png", width = 2, height = 2, units = "in",
-    res = 400)
-narrowPlot(xgrid = c(-10, 0, 10), ygrid = seq(0, 0.4, by = 0.2),
-           ylim = c(0, 0.45),
-           main = expression(paste(p[c], " by M and ln(", kappa, ")")),
-           ylab = expression(p[c]),
-           xlab = expression(paste("ln(", kappa, ")")))
-abline(h = c(0.1, 0.3), v = c(-5, 5),
-       col = adjustcolor("gray", alpha.f = 0.4))
-points(x = rep(log(min(k)), length(Mseq)), y = 1 - (1 - a)^(1/Mseq),
-       col = "firebrick", pch = 7)
-points(x = rep(log(max(k)), length(Mseq)),
-       y = 1 - pnorm(qnorm(1 - a), sd = sqrt(Mseq)),
-       col = "steelblue", pch = 9)
-for (m in Mseq) {
-        templwd <- if (m == 2) {
-                   1 } else if (m == 5) {
-                         2 } else if (m == 10) {
-                               3 } else if (m == 20) {
-                                     4 } else 5
-        lines(log(k), chiPc(k, alpha = a, M = m), lwd = templwd,
-              col = adjustcolor(chiCol, 0.8))
-}
-dev.off()
-
-## plot pr by kappa, M for the chi method
-png("prChiPool.png", width = 2, height = 2, units = "in",
-    res = 400)
-narrowPlot(xgrid = c(-10, 0, 10), ygrid = seq(0, 0.03, 0.01),
-           ylim = c(0, 0.03),
-           main = expression(paste(p[r], " by M and ln(", kappa, ")")),
-           ylab = expression(p[r]),
-           xlab = expression(paste("ln(", kappa, ")")))
-abline(v = c(-5, 5), col = adjustcolor("gray", alpha.f = 0.4))
-points(x = rep(log(min(k)), length(Mseq)), y = 1 - (1 - a)^(1/Mseq),
-       col = "firebrick", pch = 7)
-points(x = rep(log(max(k)), length(Mseq)), y = rep(0, length(Mseq)),
-       col = "steelblue", pch = 9)
-for (m in Mseq) {
-    templwd <- if (m == 2) {
-                   1 } else if (m == 5) {
-                         2 } else if (m == 10) {
-                               3 } else if (m == 20) {
-                                     4 } else 5
-    lines(log(k), chiPr(k, alpha = a, M = m), lwd = templwd,
-          col = adjustcolor(chiCol, 0.8))
-}
-legend(x = "topright", legend = c(2, 5, 10, 20, 50), lty = 1,
-       lwd = c(1, 2, 3, 4, 5), col = adjustcolor(chiCol, 0.8),
-       title = "M", bty = 'n', bg = NA, cex = 0.8)
-dev.off()
 
 ## simulate random uniform data to see how chi, tippett, and
 ## normal pooling functions compare empirically (Figure 4.8)
@@ -628,6 +576,7 @@ chipal <- colorRampPalette( # define a palette
     brewer.pal(3, "Dark2")[c(2,3)] )(length(kseq)+2)
 png("ChiRejectSeq.png", width = 5, height = 5, units = "in",
     res = 400) # create image file
+## plot area
 plot(x = x, y = x, type = 'n', xlab = expression(paste(log[e],p[1])),
      xlim = c(0.001, 1.2), ylim = c(0.001, 1.2),
      xaxs = "i", yaxs = "i",
@@ -635,17 +584,22 @@ plot(x = x, y = x, type = 'n', xlab = expression(paste(log[e],p[1])),
      main = expression(paste("Rejection boundaries for ", g[chi],
                              " by k")),
      xaxt = 'n', yaxt = 'n')
+## axes and grid lines
 abline(h = exp(axislogk), v = exp(axislogk), col = "gray50", lty = 2)
 axis(side = 1, at = exp(axislogk), labels = axislogk)
 axis(side = 2, at = exp(axislogk), labels = axislogk)
+## rejection boundary lines by kappa
 for (k in seq_along(kseq)) lines(x, chiCrv(x, k = kseq[k]),
                                  col = chipal[k+1])
+## tippett rejection lines
 lines(c(0, rep(1-0.95^0.5, 2), 1), c(1, 1, rep(1 - 0.95^0.5, 2)),
       lwd = 2, lty = 2)
 text(1-0.95^0.5, 1-0.95^0.5, expression(g[Tip]), adj = c(1,1))
+## stouffer normal rejection lines
 lines(x, normCrv(x), lwd = 2, lty = 2)
 stoInd <- which.min(abs(x - normCrv(x)))
 text(x[stoInd], normCrv(x[stoInd]), expression(g[Sto]), adj = c(0,0))
+## raster scale as a legend
 rasterImage(as.raster(matrix(rev(chipal), ncol = 1)), 0.002, 0.002,
             0.003, 0.02)
 text(x = 0.0025, y = 0.022, expression(paste(log[e],k)),

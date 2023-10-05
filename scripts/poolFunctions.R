@@ -1,16 +1,17 @@
-## some pool functions
+## some pooling functions
+## 1. the chi-squared quantile pooled p-value
 poolChi <- function(p, k) {
     M <- length(p) # dimension
     pchisq(sum(qchisq(p, df = k, lower.tail = FALSE)), df = M*k,
            lower.tail = FALSE)
 }
-
+## 2. stouffer's normal pooled p-value
 poolNorm <- function(p, mu = 0, sd = 1) {
     M <- length(p) # dimension
     pnorm(sum(qnorm(p, mean = mu, sd = sd, lower.tail = FALSE)),
           mean = M*mu, sd = sqrt(M)*sd, lower.tail = FALSE)
 }
-
+## 3. a general gamma pooled p-value
 poolGamma <- function(p, shape = 1, rate = 1/2) {
     M <- length(p) # dimension
     pgamma(sum(qgamma(p, shape = shape, rate = rate,
@@ -18,17 +19,19 @@ poolGamma <- function(p, shape = 1, rate = 1/2) {
            shape = M*shape, rate = rate,
            lower.tail = FALSE) # sum shapes
 }
-
+## 4. tippett's minimum pooled p-value
 poolTip <- function(p) {
     1 - (1 - min(p))^(length(p))
 }
 
-## chi-specific central, marginal tendencies
+## central and marginal rejection levels for the chi-squared
+## pooled p-value
+## central rejection level
 chiPc <- function(k, M, alpha = 0.05) {
     pchisq(qchisq(alpha, df = M*k, lower.tail = FALSE)/M, df = k,
            lower.tail = FALSE)
 }
-
+## marginal rejection level
 chiPr <- function(k, M, alpha = 0.05) {
     pchisq(qchisq(alpha, df = M*k, lower.tail = FALSE), df = k,
            lower.tail = FALSE)
@@ -41,32 +44,92 @@ centQuot <- function(k, M, alpha = 0.05) {
     1 - pchisq(chiCrit, df = k, lower.tail = FALSE)/
         pchisq(chiCrit/M, df = k, lower.tail = FALSE)
 }
-## directly:
+## directly using previous functions (seems more stable)
 centQuotRat <- function(k, M, alpha = 0.05) {
     1 - chiPr(k, M, alpha)/chiPc(k, M, alpha)
 }
 
-## the inverse: compute kappa for a given centrality quotient
+## use uniroot to compute the kappa value that gives a particular
+## centrality quotient in the chi-squared pooled p-value
 chiKappa <- function(cq, M, alpha = 0.05, interval = c(0,100),
                      tol = .Machine$double.eps^0.5) {
     uniroot(function(x) centQuotRat(x, M, alpha) - cq,
             interval = interval, tol = tol)$root
 }
 
-## the curves for bivariate displays
+## functions for the UMP pooled p-value
+## 1. the statistic given p and w
+hrBeta <- function(p, w = 1) {
+    w*sum(log(p)) - (1 - w)*sum(log(1 - p))
+}
+## 2. estimated rejection bounds for the UMP
+hrBnd <- function(w, alpha = 0.05, M = 2, nsim = 1e4) {
+    dat <- matrix(runif(M*nsim), ncol = M) # simulate data
+    vals <- apply(dat, 1, hrBeta, w = w)
+    quantile(vals, 1 - alpha) # get simulated quantiles
+}
+## 3. estimated pooled p-value, produces a closure to avoid repeated
+## simulation (which is time instensive)
+poolHR <- function(w = 1, M = 2, nsim = 1e5) { # simulated pooled p
+    dat <- matrix(runif(M*nsim), ncol = M)
+    pools <- apply(dat, 1, hrBeta, w = w)
+    function(p) { # closure to limit repeated computation
+        mean(hrBeta(p, w) >= pools) # obs quant
+    }
+}
+## 4. a univariate version of the UMP for central rejection
+pcHR <- function(w = 1, M = 2, nsim = 1e5) {
+    dat <- matrix(runif(M*nsim), ncol = M)
+    pools <- apply(dat, 1, hrBeta, w = w)
+    function(pc) {
+        mean(hrBeta(rep(pc, M), w) >= pools)
+    }
+}
+## 5. univariate version of the UMP for marginal rejection
+prHR <- function(w = 1, M = 2, nsim = 1e5) {
+    dat <- matrix(runif(M*nsim), ncol = M)
+    pools <- apply(dat, 1, hrBeta, w = w)
+    function(pr) {
+        mean(hrBeta(c(pr, rep(0.999, M-1)), w) >= pools)
+    }
+}
+
+## H4 alternative generation function assuming a beta distribution
+pgenHR <- function(a, w) { # accept parameters
+    b <- bwa(w, a)
+    function(M, nsim) { # closure to generate values
+        ps <- rbeta(M*nsim, shape1 = a, shape2 = b)
+        matrix(ps, ncol = M) # organize output
+    }
+}
+
+## H3 alternative generation function assuming a beta distribution
+pgenMix <- function(a, w, m1) {
+    b <- bwa(w, a)
+    function(M, nsim) {
+        h1 <- rbeta(m1*nsim, shape1 = a, shape2 = b) # true non-nulls
+        h0 <- runif((M - m1)*nsim) # true nulls
+        cbind(matrix(h1, ncol = m1, nrow = nsim),
+              matrix(h0, ncol = M - m1, nrow = nsim))
+    }
+}
+
+## the next functions define bivariate curves that show the
+## rejection boundaries of the different methods
+## 1. the curve for the chi-squared pooled p-value
 chiCrv <- function(x, k = 2, alpha = 0.05) {
     pchisq(qchisq(alpha, df = 2*k, lower.tail = FALSE) -
            qchisq(x, df = k, lower.tail = FALSE),
            df = k, lower.tail = FALSE)
 }
-
+## 2. the curve for stouffer's normal pooled p-value
 normCrv <- function(x, alpha = 0.05, mu = 0, sd = 1) {
     pnorm(qnorm(alpha, mean = mu, sd = sqrt(2*sd),
                 lower.tail = FALSE) -
           qnorm(x, mean = mu, sd = sd, lower.tail = FALSE),
           mean = mu, sd = sd, lower.tail = FALSE)
 }
-
+## 3. tippett's curve
 tipCrv <- function(x, alpha = 0.05) {
     bnd <- 1 - (1 - alpha)^(1/2) # the boundary
     below <- x <= bnd
@@ -74,7 +137,7 @@ tipCrv <- function(x, alpha = 0.05) {
     x[!below] <- bnd
     x
 }
-
+## 4. curve for the gamma pooled p-value
 gamCrv <- function(x, shape = 1, rate = 1/2, alpha = 0.05) {
     pgamma(qgamma(alpha, shape = 2*shape, rate = rate,
                   lower.tail = FALSE) -
@@ -82,29 +145,33 @@ gamCrv <- function(x, shape = 1, rate = 1/2, alpha = 0.05) {
            shape = shape, rate = rate, lower.tail = FALSE)
 }
 
-## the Kullback-Leibler divergence
+## compute the Kullback-Leibler divergence
 klDiv <- function(f1, f2, lower = 0, upper = 1) {
-    div <- function(x) {
+    div <- function(x) { # define a divergence function pointwise
         vals <- f1(x)*log(f1(x)/f2(x))
-        vals[f1(x) == 0] <- 0
+        vals[f1(x) == 0] <- 0 # by limiting arguments
         vals
     }
-    integrate(div, lower = lower, upper = upper)
+    integrate(div, lower = lower, upper = upper) # integrate
 }
 
-## the KL div for the beta case in particular
+## compute the KL div for the beta case in particular
 betaDiv <- function(a, w) {
     b <- bwa(w, a) # second parameter
     lbeta(a, b) + a + b - 2 # compute
 }
 
-## find the a that gives a particular log beta divergence given w
+## a helper to compute b given the UMP parameter w and a
+bwa <- function(w, a) 1/w + (1 - 1/w)*a
+
+## use uniroot to find the a valu that gives a particular log beta
+## divergence given w
 findA <- function(w, logd = 0, ...) {
     scr <- function(a) log(betaDiv(a, w)) - logd
     uniroot(scr, c(0,1), ...)$root
 }
 
-## other helpers
+## another helper to repeat loughin's work
 medianP <- function(b) {
     1 - 0.5^(1/b)
 }
@@ -148,7 +215,7 @@ powerCrv <- function(crv = chiCrv, crvArgs = list(k = 2),
 
 ## a general function to simulate power based on a p generation
 ## function, a combination function, and a prescribed alpha level the
-## combination function should be calibrated, i.e. when it is less
+## combination function should be calibrated to, i.e. when it is less
 ## than or equal to alpha that should lead to rejection
 powerSim <- function(pcomb, pgen, alpha = 0.05, M = 2, nsim = 1e4,
                      seed = as.numeric(Sys.Date())*Sys.getpid()) {
@@ -156,85 +223,6 @@ powerSim <- function(pcomb, pgen, alpha = 0.05, M = 2, nsim = 1e4,
     ps <- pgen(M, nsim)
     pooled <- apply(ps, 1, pcomb)
     mean(pooled <= alpha) # proportion of rejected tests
-}
-
-## the heard-rubin-delanchy case
-## pooled p value functions
-hrBeta <- function(p, w = 1) {
-    w*sum(log(p)) - (1 - w)*sum(log(1 - p))
-}
-
-## simulated rejection bounds hrb
-hrBnd <- function(w, alpha = 0.05, M = 2, nsim = 1e4) {
-    dat <- matrix(runif(M*nsim), ncol = M) # simulate data
-    vals <- apply(dat, 1, hrBeta, w = w)
-    quantile(vals, 1 - alpha) # get simulated quantiles
-}
-
-## correctly calibrated pooled hrb p-value based on simulation
-poolHR <- function(w = 1, M = 2, nsim = 1e5) { # simulated pooled p
-    dat <- matrix(runif(M*nsim), ncol = M)
-    pools <- apply(dat, 1, hrBeta, w = w)
-    function(p) { # closure to limit repeated computation
-        mean(hrBeta(p, w) >= pools) # obs quant
-    }
-}
-
-## univariate version of hrb for central rejection
-pcHR <- function(w = 1, M = 2, nsim = 1e5) {
-    dat <- matrix(runif(M*nsim), ncol = M)
-    pools <- apply(dat, 1, hrBeta, w = w)
-    function(pc, alpha = 0.05) {
-        mean(hrBeta(rep(pc, M), w) >= pools)
-    }
-}
-
-## univariate version of hrb for marginal rejection
-prHR <- function(w = 1, M = 2, nsim = 1e5) {
-    dat <- matrix(runif(M*nsim), ncol = M)
-    pools <- apply(dat, 1, hrBeta, w = w)
-    function(pr, alpha = 0.05) {
-        mean(hrBeta(c(pr, rep(0.999, M-1)), w) >= pools)
-    }
-}
-
-## test based on the hrb and simulation
-testHR <- function(alpha = 0.05, M = 2, nsim = 1e4, neval = 50) {
-    dat <- matrix(runif(M*nsim), ncol = M)
-    ws <- seq(0, 1, length.out = neval)
-    qs <- sapply(ws, # simulated bounds across multiple simulations
-                 function(w.) quantile(apply(dat, 1, hrBeta, w = w.),
-                                       1 - alpha))
-    function(p, w) { # closure to reduce computation
-        pool <- hrBeta(p, w)
-        wind <- sum(ws <= w)
-        bnd <- (ws[wind]*(ws[wind + 1] - w) + ws[wind+1]*(w - ws[wind]))/
-            (ws[wind + 1] - ws[wind])
-        pool < bnd
-    }
-}
-
-## compute b given the ratio w and a
-bwa <- function(w, a) 1/w + (1 - 1/w)*a
-
-## HR beta generation functions
-pgenHR <- function(a, w) { # accept parameters
-    b <- bwa(w, a)
-    function(M, nsim) { # closure to generate values
-        ps <- rbeta(M*nsim, shape1 = a, shape2 = b)
-        matrix(ps, ncol = M) # organize output
-    }
-}
-
-## a simple extension: m1 are not uniform, M - m1 are
-pgenMix <- function(a, w, m1) {
-    b <- bwa(w, a)
-    function(M, nsim) {
-        h1 <- rbeta(m1*nsim, shape1 = a, shape2 = b)
-        h0 <- runif((M - m1)*nsim) # true nulls
-        cbind(matrix(h1, ncol = m1, nrow = nsim),
-              matrix(h0, ncol = M - m1, nrow = nsim))
-    }
 }
 
 ## custom plotting function with narrow margins

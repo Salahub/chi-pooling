@@ -34,22 +34,28 @@ hrStat <- function(p, w = 1) {
 ##'
 ##' This function computes the statistic given by this combination
 ##' for a collection of p-values, and then simulates a specified
-##' number of null cases to give an empirical pooled p-value.
-##' @param p numeric vector of p-values between 0 and 1
+##' number of null cases to give an empirical pooled p-value. It
+##' produces a closure so that the time-intensive simulation step
+##' doesn't need to be repeated.
 ##' @param w numeric value between 0 and 1
 ##' @param nsim integer, the number of simulated null cases generated
-##' @return A numeric value between 0 and 1.
+##' @return A closure which accepts a vector of values between 0 and 1
+##' and returns a single numeric between 0 and 1
 ##' @examples
 ##' p <- c(0.1, 0.5, 0.9)
-##' hrPool(p, 0.2)
-##' hrPool(p, 0.5)
-##' hrPool(p, 0.9)
+##' hr2 <- hrpool(w = 0.2)
+##' hr2(p)
+##' hr2(runif(10))
+##' hr5 <- hrpool(w = 0.5, nsim = 100)
+##' hr5(p)
 ##' @author Chris Salahub
-hrPool <- function(p, w = 1, nsim = 1e5) {
+hrPool <- function(w = 1, nsim = 1e5) {
     M <- length(p) # get dimension
     dat <- matrix(runif(M*nsim), ncol = M)
     pools <- apply(dat, 1, hrStat, w = w)
-    mean(hrStat(p, w) >= pools) # observed quantile
+    function(p) {
+        mean(hrStat(p, w) >= pools) # observed quantile
+    }
 }
 
 ##' @title Empirical UMP beta central rejection level
