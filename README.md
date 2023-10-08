@@ -3,9 +3,9 @@
 This repository contains all of the code required to run a recursive
 binning algorithm to measure dependence. Two directories are contained:
 
-## pooledCentR
+## PoolBal
 
-The pooledCentR directory contains an R package which can be used to
+The PoolBal directory contains an R package which can be used to
 estimate the centrality quotient, marginal rejection level at b, and
 central rejection level for arbitrary p-value pooling functions. It
 also contains an implementation of the chi-squared pooled p-value and
@@ -14,7 +14,7 @@ restricted beta family. Supporting functions to generate examples
 under different alternative distributions and visualize results are
 provided alongside this core functionality. The package can be
 downloaded via the command `install_github("Salahub/chi-pooling",
-subdir="pooledCentR")` using `install_github` from the `devtools`
+subdir="PoolBal")` using `install_github` from the `devtools`
 package in R.
 
 ## Scripts
@@ -25,7 +25,7 @@ p-value in my thesis. For tidiness, simulation outputs (which are
 often called by other scripts) are stored in the results subdirectory.
 Briefly:
 
-- **poolFunctions.R**: essentially a prototype of pooledCentR, this
+- **poolFunctions.R**: essentially a prototype of PoolBal, this
   contains similar functions to those found in the package along with
   many other helpful functions used throughout these scripts
 - **pooledChi.R**: reads in many simulation results and generates
@@ -38,7 +38,7 @@ Briefly:
   generate reference quantiles
 - **chiMapPlot.R**: processes power data from simulations using the
   chi-squared pooled p-value to create the data for functionality in
-  pooledCentR
+  PoolBal
 - **chiMap.R**: computes the power of the chi-square pooled p-value
   for a range of kappa values over a range of parameter settings (the
   simulation described in Section 4.7.2 of my thesis)
