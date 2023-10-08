@@ -34,8 +34,8 @@ a pooling function which takes a numeric vector as its first
 argument and potentially other arguments given in poolArgs and
 returns a single value. Using this pooling function, a specified
 dimension M and a rejection level alpha, uniroot searches for the
-root to poolFun - alpha along one margin when all p-values are
-equal to b.
+root to poolFun - alpha along one margin when all other p-values
+are equal to b.
 }
 \examples{
 stopool <- function(p) pnorm(sum(qnorm(p, lower.tail = FALSE))/

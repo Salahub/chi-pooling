@@ -4,17 +4,16 @@
 \alias{hrPool}
 \title{Empirical UMP beta pooled p-value}
 \usage{
-hrPool(p, w = 1, nsim = 1e+05)
+hrPool(w = 1, nsim = 1e+05)
 }
 \arguments{
-\item{p}{numeric vector of p-values between 0 and 1}
-
 \item{w}{numeric value between 0 and 1}
 
 \item{nsim}{integer, the number of simulated null cases generated}
 }
 \value{
-A numeric value between 0 and 1.
+A closure which accepts a vector of values between 0 and 1
+and returns a single numeric between 0 and 1
 }
 \description{
 Uses simulation under the null to approximate the UMP
@@ -29,13 +28,17 @@ of freedom with weights w and (1 - w) where w = (1 - a)/(b - a).
 
 This function computes the statistic given by this combination
 for a collection of p-values, and then simulates a specified
-number of null cases to give an empirical pooled p-value.
+number of null cases to give an empirical pooled p-value. It
+produces a closure so that the time-intensive simulation step
+doesn't need to be repeated.
 }
 \examples{
 p <- c(0.1, 0.5, 0.9)
-hrPool(p, 0.2)
-hrPool(p, 0.5)
-hrPool(p, 0.9)
+hr2 <- hrpool(w = 0.2)
+hr2(p)
+hr2(runif(10))
+hr5 <- hrpool(w = 0.5, nsim = 100)
+hr5(p)
 }
 \author{
 Chris Salahub
