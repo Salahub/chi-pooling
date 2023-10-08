@@ -1,0 +1,16 @@
+Package: PoolBal
+Version: 1.0-0
+Encoding: UTF-8
+Title: Balancing central and marginal rejection of pooled p-values in R
+Description: Compute marginal and central rejection levels and the centrality quotient for p-value pooling functions and provide the chi-squared pooled p-value to control the quotient's value.
+Authors@R: c(person(given = "Chris", family = "Salahub", role = c("aut", "cre"), email = "chris.salahub@uwaterloo.ca"))
+Author: Chris Salahub [aut, cre]
+Maintainer: Chris Salahub <chris.salahub@uwaterloo.ca>
+Depends: R (>= 4.3.0)
+Imports: 
+Suggests: poolR
+Enhances:
+License: GPL (>= 3) | file LICENCE
+NeedsCompilation: no
+Repository: CRAN
+RoxygenNote: 7.2.3
