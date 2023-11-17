@@ -49,6 +49,7 @@ estimatePc <- function(poolFun, alpha = 0.05, M = 2,
 ##' @param poolFun function accepting a vector of p-values
 ##' @param alpha numeric between 0 and 1
 ##' @param M integer, how many p-values are there?
+##' @param interval two numerics giving the bounds of root-searching
 ##' @param poolArgs (optional) additional named arguments for poolFun
 ##' @param ... additional arguments to uniroot
 ##' @return The uniroot output.
@@ -59,7 +60,7 @@ estimatePc <- function(poolFun, alpha = 0.05, M = 2,
 ##' estimatePrb(stopool, 0.05, M = 10, b = 0.5)
 ##' @author Chris Salahub
 estimatePrb <- function(poolFun, alpha = 0.05, b = 1, M = 2,
-                        poolArgs = list(), ...) {
+                        interval = c(0, b), poolArgs = list(), ...) {
     ## check upper limit
     atb <- do.call(poolFun, args = c(list(rep(b, M)), poolArgs))
     if (atb < alpha) {
@@ -68,7 +69,7 @@ estimatePrb <- function(poolFun, alpha = 0.05, b = 1, M = 2,
         pcr <- function(x) do.call(poolFun,
                                    args = c(list(c(x, rep(b, M-1))),
                                             poolArgs)) - alpha
-        uniroot(pcr, lower = 0, upper = b, ...)$root
+        uniroot(pcr, interval = interval, ...)$root
     }
 }
 
@@ -87,6 +88,7 @@ estimatePrb <- function(poolFun, alpha = 0.05, b = 1, M = 2,
 ##' @param poolFun function accepting a vector of p-values
 ##' @param alpha numeric between 0 and 1
 ##' @param M integer, how many p-values are there?
+##' @param interval two numerics giving the bounds of root-searching
 ##' @param poolArgs (optional) additional named arguments for poolFun
 ##' @param ... additional arguments to uniroot
 ##' @return The uniroot output.
@@ -97,10 +99,10 @@ estimatePrb <- function(poolFun, alpha = 0.05, b = 1, M = 2,
 ##' estimatePrb(stopool, 0.05, M = 10, b = 0.5)
 ##' @author Chris Salahub
 estimateQ <- function(poolFun, alpha = 0.05, M = 2,
-                      poolArgs = list(), ...) {
+                      interval = c(0,1), poolArgs = list(), ...) {
     pc <- estimatePc(poolFun, alpha = alpha, M = M,
-                     poolArgs = poolArgs, ...)
+                     poolArgs = poolArgs, interval = interval, ...)
     pr <- estimatePrb(poolFun, alpha = alpha, M = M, b = 1,
-                     poolArgs = poolArgs, ...)
+                     poolArgs = poolArgs, interval = interval, ...)
     (pc - pr)/pc
 }
