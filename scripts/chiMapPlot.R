@@ -1,4 +1,4 @@
-library(pooledCentR)
+library(PoolBal)
 
 ## FUNCTIONS #########################################################
 ## binomial difference function comparing an observed power to the
