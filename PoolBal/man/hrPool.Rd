@@ -4,10 +4,12 @@
 \alias{hrPool}
 \title{Empirical UMP beta pooled p-value}
 \usage{
-hrPool(w = 1, nsim = 1e+05)
+hrPool(w = 1, M = 10, nsim = 1e+05)
 }
 \arguments{
 \item{w}{numeric value between 0 and 1}
+
+\item{M}{integer, the number of tests to pool}
 
 \item{nsim}{integer, the number of simulated null cases generated}
 }
@@ -34,10 +36,9 @@ doesn't need to be repeated.
 }
 \examples{
 p <- c(0.1, 0.5, 0.9)
-hr2 <- hrpool(w = 0.2)
+hr2 <- hrpool(w = 0.2, M = 3)
 hr2(p)
-hr2(runif(10))
-hr5 <- hrpool(w = 0.5, nsim = 100)
+hr5 <- hrpool(w = 0.5, M = 3, nsim = 100)
 hr5(p)
 }
 \author{
