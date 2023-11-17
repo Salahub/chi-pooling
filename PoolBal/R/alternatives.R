@@ -79,17 +79,17 @@ findA <- function(w, logd = 0, ...) {
 ##' @param N number of realizations
 ##' @return An N by M matrix of simulated p-values.
 ##' @examples
-##' pBetaH4(a = 0.5, b = 1.5, M = 10, N = 100)
-##' pBetaH3(a = 0.5, b = 1.5, eta = 0.5, M = 10, N = 100)
+##' rBetaH4(a = 0.5, b = 1.5, M = 10, N = 100)
+##' rBetaH3(a = 0.5, b = 1.5, eta = 0.5, M = 10, N = 100)
 ##' @author Chris Salahub
 ##' @describeIn alternatives iid Beta(a,w) p-values
-pBetaH4 <- function(a, b = 1/w + a*(1 - 1/w), w = (1 - a)/(b - a),
+rBetaH4 <- function(a, b = 1/w + a*(1 - 1/w), w = (1 - a)/(b - a),
                     M = 2, N = 10) {
     ps <- rbeta(M*N, shape1 = a, shape2 = b)
     matrix(ps, ncol = M)
 }
 ##' @describeIn alternatives M*eta iid Beta(a,w) p-values, others uniform
-pBetaH3 <- function(a, b = 1/w + a*(1 - 1/w), w = (1 - a)/(b - a),
+rBetaH3 <- function(a, b = 1/w + a*(1 - 1/w), w = (1 - a)/(b - a),
                     eta = 0.5, M = 2, N = 10) {
     m1 <- floor(M*eta) # number of non-null tests to generate
     h1 <- rbeta(m1*N, shape1 = a, shape2 = b)

@@ -39,23 +39,23 @@ hrStat <- function(p, w = 1) {
 ##' doesn't need to be repeated.
 ##' @param w numeric value between 0 and 1
 ##' @param nsim integer, the number of simulated null cases generated
+##' @param M integer, the number of tests to pool
 ##' @return A closure which accepts a vector of values between 0 and 1
 ##' and returns a single numeric between 0 and 1
 ##' @examples
 ##' p <- c(0.1, 0.5, 0.9)
-##' hr2 <- hrpool(w = 0.2)
+##' hr2 <- hrpool(w = 0.2, M = 3)
 ##' hr2(p)
-##' hr2(runif(10))
-##' hr5 <- hrpool(w = 0.5, nsim = 100)
+##' hr5 <- hrpool(w = 0.5, M = 3, nsim = 100)
 ##' hr5(p)
 ##' @author Chris Salahub
-hrPool <- function(w = 1, nsim = 1e5) {
-    M <- length(p) # get dimension
+hrPool <- function(w = 1, M = 10, nsim = 1e5) {
     dat <- matrix(runif(M*nsim), ncol = M)
     pools <- apply(dat, 1, hrStat, w = w)
-    function(p) {
+    fun <- function(p) {
         mean(hrStat(p, w) >= pools) # observed quantile
     }
+    fun
 }
 
 ##' @title Empirical UMP beta central rejection level
