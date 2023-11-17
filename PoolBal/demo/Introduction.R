@@ -179,16 +179,25 @@ HMPpool <- function(p) length(p)/sum(1/p)
 
 ##' it can be proven that the centrality quotient is 0 uniquely for
 ##' Tippett's p-value (the minimum pooled p-value), every other
-##' pooled p-value is greater than 0
+##' pooled p-value is greater than 0 when M >= 2
 estimatePrb(HMPpool, M = M)
 estimatePc(HMPpool, M = M)
 estimateQ(HMPpool, M = M) ## harmonic mean p-value
 estimatePrb(tipPool, M = M)
 estimatePc(tipPool, M = M)
 estimateQ(tipPool, M = M) ## minimum/tippett's
-##' the estimation function calls uniroot, and the user can specify
-##' aspects such as the lower and upper bounds
-estimatePrb(logPool, M = M, lower = 0.01)
-estimatePc(logPool, M = M)
-estimateQ(logPool, M = M) ## minimum/tippett's
+estimatePrb(fisPool, M = M)
+estimatePc(fisPool, M = M)
+estimateQ(fisPool, M = M) ## fisher's method
 
+## chiPool controls this quotient
+plot(seq(-10, 10, by = 0.1), chiQ(exp(seq(-10, 10, by = 0.1)), M = 20),
+     type = "l", xlab = expression(log~kappa),
+     ylab = "Centrality quotient")
+
+##' as M increases, basically every pooled p-value approaches a
+##' centrality of 1: can be understood geometrically or using the CLT
+plot(1:20, sapply(1:20, estimateQ, poolFun = fisPool, alpha = 0.05),
+     xlab = "M", ylab = "Centrality quotient", type = "b")
+plot(1:20, sapply(1:20, estimateQ, poolFun = HMPpool, alpha = 0.05),
+     xlab = "M", ylab = "Centrality quotient", type = "b")
