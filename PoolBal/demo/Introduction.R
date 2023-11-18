@@ -113,6 +113,57 @@ legend(x = "topleft", legend = c(0.01, 2, 2000),
 ##' against diffuse weak evidence
 ##' this is made precise by the concepts of central and marginal
 ##' rejection and the centrality quotient
+par(mfrow = c(2,2)) # separate chi and hr functions
+caseInds <- simPs[, "case"] == 2 # first plot case 2
+plot(NA, xlim = c(0,1), ylim = c(0,1), xlab = "Quantile",
+     ylab = "Pooled p-value", main = "hrPool")
+abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.2),
+       col = "gray50", lty = 2)
+abline(a = 0, b = 1, col = "gray70")
+points(ppoints(N), sort(hr1Dists[caseInds]), col = pal[1])
+points(ppoints(N), sort(hr.5Dists[caseInds]), col = pal[2])
+points(ppoints(N), sort(hr.01Dists[caseInds]), col = pal[3])
+abline(h = 0.05, col = "firebrick") # example rejection bound
+legend(x = "topleft", legend = c(1, 0.5, 0.01), title = "w",
+       pch = 21, col = pal[1:3], bg = "white")
+## now the chi quantile plot
+plot(NA, xlim = c(0,1), ylim = c(0,1), xlab = "Quantile",
+     ylab = "Pooled p-value", main = "chiPool")
+abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.2),
+       col = "gray50", lty = 2)
+abline(a = 0, b = 1, col = "gray70")
+points(ppoints(N), sort(chi0.01[caseInds]), col = pal[4])
+points(ppoints(N), sort(chi2[caseInds]), col = pal[5])
+points(ppoints(N), sort(chi2000[caseInds]), col = pal[6])
+abline(h = 0.05, col = "firebrick") # example rejection bound
+legend(x = "topleft", legend = c(0.01, 2, 2000),
+       title = expression(kappa), bg = "white",
+       pch = 21, col = pal[4:6])
+caseInds <- simPs[, "case"] == 9 # next case 9
+plot(NA, xlim = c(0,1), ylim = c(0,1), xlab = "Quantile",
+     ylab = "Pooled p-value", main = "hrPool")
+abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.2),
+       col = "gray50", lty = 2)
+abline(a = 0, b = 1, col = "gray70")
+points(ppoints(N), sort(hr1Dists[caseInds]), col = pal[1])
+points(ppoints(N), sort(hr.5Dists[caseInds]), col = pal[2])
+points(ppoints(N), sort(hr.01Dists[caseInds]), col = pal[3])
+abline(h = 0.05, col = "firebrick") # example rejection bound
+legend(x = "topleft", legend = c(1, 0.5, 0.01), title = "w",
+       pch = 21, col = pal[1:3], bg = "white")
+## now the chi quantile plot
+plot(NA, xlim = c(0,1), ylim = c(0,1), xlab = "Quantile",
+     ylab = "Pooled p-value", main = "chiPool")
+abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.2),
+       col = "gray50", lty = 2)
+abline(a = 0, b = 1, col = "gray70")
+points(ppoints(N), sort(chi0.01[caseInds]), col = pal[4])
+points(ppoints(N), sort(chi2[caseInds]), col = pal[5])
+points(ppoints(N), sort(chi2000[caseInds]), col = pal[6])
+abline(h = 0.05, col = "firebrick") # example rejection bound
+legend(x = "topleft", legend = c(0.01, 2, 2000),
+       title = expression(kappa), bg = "white",
+       pch = 21, col = pal[4:6])
 
 
 ## ESTIMATING CENTRAL AND MARGINAL REJECTION AND CENTRALITY ##########
@@ -189,6 +240,11 @@ estimateQ(tipPool, M = M) ## minimum/tippett's
 estimatePrb(fisPool, M = M)
 estimatePc(fisPool, M = M)
 estimateQ(fisPool, M = M) ## fisher's method
+## for certain functions, the interval has to be adjusted due to
+## infities at 0
+estimatePrb(stoPool, M = M, interval = c(.Machine$double.eps, 1))
+estimatePc(stoPool, M = M, interval = c(.Machine$double.eps, 1))
+estimateQ(stoPool, M = M, interval = c(.Machine$double.eps, 1))
 
 ## chiPool controls this quotient
 plot(seq(-10, 10, by = 0.1), chiQ(exp(seq(-10, 10, by = 0.1)), M = 20),

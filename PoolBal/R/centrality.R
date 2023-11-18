@@ -28,8 +28,19 @@ estimatePc <- function(poolFun, alpha = 0.05, M = 2,
     pcf <- function(x) do.call(poolFun,
                                args = c(list(rep(x, M)),
                                         poolArgs)) - alpha
-
-    uniroot(pcf, interval = interval, ...)$root
+    rt <- try(uniroot(pcf, interval = interval, ...)$root,
+              silent = TRUE)
+    if ((is(rt, "try-error")|is(rt, "error")) &
+        interval[1] < 2*.Machine$double.eps &
+        interval[2] > 2*.Machine$double.eps) { # basically 0 and 1
+        if (grepl("values at end points not of opposite sign", rt)) {
+            0 # handle floating point issues without errors
+        } else {
+            stop(rt)
+        }
+    } else {
+        rt
+    }
 }
 
 ##' @title Compute the marginal rejection level
@@ -69,7 +80,20 @@ estimatePrb <- function(poolFun, alpha = 0.05, b = 1, M = 2,
         pcr <- function(x) do.call(poolFun,
                                    args = c(list(c(x, rep(b, M-1))),
                                             poolArgs)) - alpha
-        uniroot(pcr, interval = interval, ...)$root
+        rt <- try(uniroot(pcr, interval = interval, ...)$root,
+                  silent = TRUE) # error handling
+        if ((is(rt, "try-error")|is(rt, "error")) &
+            interval[1] < 2*.Machine$double.eps &
+            interval[2] > 1 - 2*.Machine$double.eps) { # basically 0 and 1
+            if (grepl("values at end points not of opposite sign",
+                      rt)) {
+                0 # handle floating point issues without errors
+            } else {
+                stop(rt)
+            }
+        } else {
+            rt
+        }
     }
 }
 

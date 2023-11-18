@@ -4,7 +4,14 @@
 \alias{estimateQ}
 \title{Compute the centrality quotient}
 \usage{
-estimateQ(poolFun, alpha = 0.05, M = 2, poolArgs = list(), ...)
+estimateQ(
+  poolFun,
+  alpha = 0.05,
+  M = 2,
+  interval = c(0, 1),
+  poolArgs = list(),
+  ...
+)
 }
 \arguments{
 \item{poolFun}{function accepting a vector of p-values}
@@ -12,6 +19,8 @@ estimateQ(poolFun, alpha = 0.05, M = 2, poolArgs = list(), ...)
 \item{alpha}{numeric between 0 and 1}
 
 \item{M}{integer, how many p-values are there?}
+
+\item{interval}{two numerics giving the bounds of root-searching}
 
 \item{poolArgs}{(optional) additional named arguments for poolFun}
 
