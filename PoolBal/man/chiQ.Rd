@@ -28,9 +28,9 @@ to others. For the chi-square pooled p-value, this is a
 conditional probability which this function computes.
 }
 \examples{
-chiCentQuot(2, 10, 0.05)
-chiCentQuot(2, 20, 0.05)
-chiCentQuot(0.5, 20, 0.05)
+chiQ(2, 10, 0.05)
+chiQ(2, 20, 0.05)
+chiQ(0.5, 20, 0.05)
 }
 \author{
 Chris Salahub

@@ -20,7 +20,7 @@
 ##' @param ... additional arguments to uniroot
 ##' @return The uniroot output.
 ##' @examples
-##' tippool <- function(p) 1 - (1 - p)^(length(p))
+##' tippool <- function(p) 1 - (1 - min(p))^(length(p))
 ##' estimatePc(tippool, 0.05, M = 10, interval = c(0, 1))
 ##' @author Chris Salahub
 estimatePc <- function(poolFun, alpha = 0.05, M = 2,
@@ -32,7 +32,7 @@ estimatePc <- function(poolFun, alpha = 0.05, M = 2,
               silent = TRUE)
     if ((is(rt, "try-error")|is(rt, "error")) &
         interval[1] < 2*.Machine$double.eps &
-        interval[2] > 2*.Machine$double.eps) { # basically 0 and 1
+        interval[2] > 1 - 2*.Machine$double.eps) { # basically 0 and 1
         if (grepl("values at end points not of opposite sign", rt)) {
             0 # handle floating point issues without errors
         } else {
@@ -59,16 +59,16 @@ estimatePc <- function(poolFun, alpha = 0.05, M = 2,
 ##' are equal to b.
 ##' @param poolFun function accepting a vector of p-values
 ##' @param alpha numeric between 0 and 1
+##' @param b numeric, the value of the M - 1 repeated p-values
 ##' @param M integer, how many p-values are there?
 ##' @param interval two numerics giving the bounds of root-searching
 ##' @param poolArgs (optional) additional named arguments for poolFun
 ##' @param ... additional arguments to uniroot
 ##' @return The uniroot output.
 ##' @examples
-##' stopool <- function(p) pnorm(sum(qnorm(p, lower.tail = FALSE))/
-##' sqrt(length(p), lower.tail = FALSE)
-##' estimatePrb(stopool, 0.05, M = 10)
-##' estimatePrb(stopool, 0.05, M = 10, b = 0.5)
+##' stopool <- function(p) pnorm(sum(qnorm(p, lower.tail = FALSE))/ sqrt(length(p)), lower.tail = FALSE)
+##' estimatePrb(stopool, 0.05, M = 10, interval = c(.Machine$double.eps, 1))
+##' estimatePrb(stopool, 0.05, M = 10, b = 0.5, interval = c(.Machine$double.eps, 1))
 ##' @author Chris Salahub
 estimatePrb <- function(poolFun, alpha = 0.05, b = 1, M = 2,
                         interval = c(0, b), poolArgs = list(), ...) {
@@ -117,10 +117,7 @@ estimatePrb <- function(poolFun, alpha = 0.05, b = 1, M = 2,
 ##' @param ... additional arguments to uniroot
 ##' @return The uniroot output.
 ##' @examples
-##' stopool <- function(p) pnorm(sum(qnorm(p, lower.tail = FALSE))/
-##' sqrt(length(p), lower.tail = FALSE)
-##' estimatePrb(stopool, 0.05, M = 10)
-##' estimatePrb(stopool, 0.05, M = 10, b = 0.5)
+##' estimateQ(chiPool, alpha = 0.05, M = 10, poolArgs = list(kappa = 10))
 ##' @author Chris Salahub
 estimateQ <- function(poolFun, alpha = 0.05, M = 2,
                       interval = c(0,1), poolArgs = list(), ...) {

@@ -17,9 +17,9 @@
 ##' @return A pooled p-value between 0 and 1.
 ##' @examples
 ##' p <- c(0.1, 0.5, 0.9)
-##' chipool(p, exp(-4))
-##' chipool(p, 2)
-##' chipool(p, exp(4))
+##' chiPool(p, exp(-4))
+##' chiPool(p, 2)
+##' chiPool(p, exp(4))
 ##' @author Chris Salahub
 chiPool <- function(p, kappa) {
     M <- length(p) # dimension
@@ -86,9 +86,9 @@ chiPr <- function(kappa, M, alpha = 0.05) {
 ##' @param alpha numeric between 0 and 1
 ##' @return A numeric between 0 and 1.
 ##' @examples
-##' chiCentQuot(2, 10, 0.05)
-##' chiCentQuot(2, 20, 0.05)
-##' chiCentQuot(0.5, 20, 0.05)
+##' chiQ(2, 10, 0.05)
+##' chiQ(2, 20, 0.05)
+##' chiQ(0.5, 20, 0.05)
 ##' @author Chris Salahub
 chiQ <- function(kappa, M, alpha = 0.05) {
     1 - chiPr(kappa, M, alpha)/chiPc(kappa, M, alpha)
@@ -111,7 +111,7 @@ chiQ <- function(kappa, M, alpha = 0.05) {
 ##' @examples
 ##' chiKappa(0.5, 10, 0.05)
 ##' chiKappa(0.5, 20, 0.05)
-##' chiKappa(0.5, 100, 0.05, interval = c(10, 1000))
+##' chiKappa(0.5, 100, 0.05, interval = c(0, 10))
 ##' @author Chris Salahub
 chiKappa <- function(cq, M, alpha = 0.05, interval = c(0,100),
                      tol = .Machine$double.eps^0.5) {

@@ -40,7 +40,7 @@ quotient.
 \examples{
 chiKappa(0.5, 10, 0.05)
 chiKappa(0.5, 20, 0.05)
-chiKappa(0.5, 100, 0.05, interval = c(10, 1000))
+chiKappa(0.5, 100, 0.05, interval = c(0, 10))
 }
 \author{
 Chris Salahub

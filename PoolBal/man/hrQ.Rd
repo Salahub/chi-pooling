@@ -38,8 +38,7 @@ central and marginal rejection levels to compute the centrality
 quotient for the UMP pooled p-value.
 }
 \examples{
-estimatePrb(stopool, 0.05, M = 10)
-estimatePrb(stopool, 0.05, M = 10, b = 0.5)
+hrQ(0.8, alpha = 0.05, M = 10)
 }
 \author{
 Chris Salahub

@@ -36,9 +36,9 @@ doesn't need to be repeated.
 }
 \examples{
 p <- c(0.1, 0.5, 0.9)
-hr2 <- hrpool(w = 0.2, M = 3)
+hr2 <- hrPool(w = 0.2, M = 3)
 hr2(p)
-hr5 <- hrpool(w = 0.5, M = 3, nsim = 100)
+hr5 <- hrPool(w = 0.5, M = 3, nsim = 100)
 hr5(p)
 }
 \author{

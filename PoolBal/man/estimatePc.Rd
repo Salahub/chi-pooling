@@ -47,7 +47,7 @@ root to poolFun - alpha along the line where all p-values are
 equal.
 }
 \examples{
-tippool <- function(p) 1 - (1 - p)^(length(p))
+tippool <- function(p) 1 - (1 - min(p))^(length(p))
 estimatePc(tippool, 0.05, M = 10, interval = c(0, 1))
 }
 \author{

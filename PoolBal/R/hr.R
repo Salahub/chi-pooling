@@ -44,9 +44,9 @@ hrStat <- function(p, w = 1) {
 ##' and returns a single numeric between 0 and 1
 ##' @examples
 ##' p <- c(0.1, 0.5, 0.9)
-##' hr2 <- hrpool(w = 0.2, M = 3)
+##' hr2 <- hrPool(w = 0.2, M = 3)
 ##' hr2(p)
-##' hr5 <- hrpool(w = 0.5, M = 3, nsim = 100)
+##' hr5 <- hrPool(w = 0.5, M = 3, nsim = 100)
 ##' hr5(p)
 ##' @author Chris Salahub
 hrPool <- function(w = 1, M = 10, nsim = 1e5) {
@@ -80,8 +80,8 @@ hrPool <- function(w = 1, M = 10, nsim = 1e5) {
 ##' @param nsim integer, the number of simulated null cases generated
 ##' @return A numeric between 0 and 1.
 ##' @examples
-##' hrPc(2, 10, 0.05)
-##' hrPc(2, 20, 0.05)
+##' hrPc(w = 0.5, alpha = 0.05, M = 10)
+##' hrPc(w = 0.5, alpha = 0.05, M = 20)
 ##' @author Chris Salahub
 hrPc <- function(w, alpha = 0.05, M = 2, nsim = 1e5) {
     dat <- matrix(runif(M*nsim), ncol = M)
@@ -115,8 +115,8 @@ hrPc <- function(w, alpha = 0.05, M = 2, nsim = 1e5) {
 ##' @param nsim integer, the number of simulated null cases generated
 ##' @return A numeric between 0 and 1.
 ##' @examples
-##' hrPr(2, 10, 0.05)
-##' hrPr(2, 20, 0.05) # decreases in sample size
+##' hrPr(w = 0.5, alpha = 0.05, M = 10)
+##' hrPr(w = 0.5, alpha = 0.05, M = 10) # decreases in sample size
 ##' @author Chris Salahub
 hrPr <- function(w, alpha = 0.05, M = 2, nsim = 1e5) {
     dat <- matrix(runif(M*nsim), ncol = M)
@@ -151,8 +151,7 @@ hrPr <- function(w, alpha = 0.05, M = 2, nsim = 1e5) {
 ##' @param nsim integer, the number of simulated null cases generated
 ##' @return An empirical estimate of the centrality quotient.
 ##' @examples
-##' estimatePrb(stopool, 0.05, M = 10)
-##' estimatePrb(stopool, 0.05, M = 10, b = 0.5)
+##' hrQ(0.8, alpha = 0.05, M = 10)
 ##' @author Chris Salahub
 hrQ <- function(w, alpha = 0.05, M = 2, nsim = 1e5) {
     pc <- hrPc(w, alpha, M, nsim)

@@ -45,10 +45,7 @@ specify b for marginal rejection is included in case the pooled p
 -value has strange behaviour when p-values are equal to 1.
 }
 \examples{
-stopool <- function(p) pnorm(sum(qnorm(p, lower.tail = FALSE))/
-sqrt(length(p), lower.tail = FALSE)
-estimatePrb(stopool, 0.05, M = 10)
-estimatePrb(stopool, 0.05, M = 10, b = 0.5)
+estimateQ(chiPool, alpha = 0.05, M = 10, poolArgs = list(kappa = 10))
 }
 \author{
 Chris Salahub

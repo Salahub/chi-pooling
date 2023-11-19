@@ -38,8 +38,8 @@ by simulating a specified number of null cases to give an empirical
 pooled p-value for the rejection level alpha.
 }
 \examples{
-hrPr(2, 10, 0.05)
-hrPr(2, 20, 0.05) # decreases in sample size
+hrPr(w = 0.5, alpha = 0.05, M = 10)
+hrPr(w = 0.5, alpha = 0.05, M = 10) # decreases in sample size
 }
 \author{
 Chris Salahub

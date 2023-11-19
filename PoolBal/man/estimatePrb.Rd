@@ -19,6 +19,8 @@ estimatePrb(
 
 \item{alpha}{numeric between 0 and 1}
 
+\item{b}{numeric, the value of the M - 1 repeated p-values}
+
 \item{M}{integer, how many p-values are there?}
 
 \item{interval}{two numerics giving the bounds of root-searching}
@@ -48,10 +50,9 @@ root to poolFun - alpha along one margin when all other p-values
 are equal to b.
 }
 \examples{
-stopool <- function(p) pnorm(sum(qnorm(p, lower.tail = FALSE))/
-sqrt(length(p), lower.tail = FALSE)
-estimatePrb(stopool, 0.05, M = 10)
-estimatePrb(stopool, 0.05, M = 10, b = 0.5)
+stopool <- function(p) pnorm(sum(qnorm(p, lower.tail = FALSE))/ sqrt(length(p)), lower.tail = FALSE)
+estimatePrb(stopool, 0.05, M = 10, interval = c(.Machine$double.eps, 1))
+estimatePrb(stopool, 0.05, M = 10, b = 0.5, interval = c(.Machine$double.eps, 1))
 }
 \author{
 Chris Salahub

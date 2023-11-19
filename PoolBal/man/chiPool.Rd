@@ -33,9 +33,9 @@ rejection.
 }
 \examples{
 p <- c(0.1, 0.5, 0.9)
-chipool(p, exp(-4))
-chipool(p, 2)
-chipool(p, exp(4))
+chiPool(p, exp(-4))
+chiPool(p, 2)
+chiPool(p, exp(4))
 }
 \author{
 Chris Salahub
