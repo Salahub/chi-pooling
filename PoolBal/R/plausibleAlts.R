@@ -44,9 +44,9 @@ altFrequencyMat <- function(logKappaRange, logW = FALSE) {
     kapInd <- kapSeq <= logKappaRange[2] & kapSeq >= logKappaRange[1]
     if (logKappaRange[2] > max(kapSeq) |
         logKappaRange[1] < min(kapSeq)) {
-        warning(cat("kappaRange extends beyond the simulation range",
-                    "(exp(-8) to exp(8)), map reported is only",
-                    "accurate for values within this range"))
+        warning(paste("kappaRange extends beyond the simulation range",
+                      "(exp(-8) to exp(8)), map reported is only",
+                      "accurate for values within this range"))
     }
     if (!any(kapInd)) { # if interval is between simulation steps
         kapInd <- logical(length(kapSeq))

@@ -78,7 +78,7 @@ chi2000 <- apply(simPs[, 1:M], 1, chiPool, kappa = 2000)
 ##' against that particular case
 pal <- hcl.colors(6, palette = "Dark2")
 caseInds <- simPs[, "case"] == 3
-par(mfrow = c(1,2)) # separate chi and hr functions
+oldPar <- par(mfrow = c(1,2)) # separate chi and hr functions
 plot(NA, xlim = c(0,1), ylim = c(0,1), xlab = "Quantile",
      ylab = "Pooled p-value", main = "hrPool")
 abline(h = seq(0, 1, by = 0.2), v = seq(0, 1, by = 0.2),
@@ -257,3 +257,4 @@ plot(1:20, sapply(1:20, estimateQ, poolFun = fisPool, alpha = 0.05),
      xlab = "M", ylab = "Centrality quotient", type = "b")
 plot(1:20, sapply(1:20, estimateQ, poolFun = HMPpool, alpha = 0.05),
      xlab = "M", ylab = "Centrality quotient", type = "b")
+par(oldPar)
