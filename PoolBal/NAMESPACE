@@ -1,3 +1,7 @@
+importFrom("grDevices", "adjustcolor", "colorRampPalette")
+importFrom("graphics", "image", "mtext", "par", "rect")
+importFrom("methods", "is")
+importFrom("stats", "integrate", "pchisq", "predict", "qchisq", "rbeta", "runif", "uniroot")
 export(klDiv)
 export(betaDiv)
 export(findA)

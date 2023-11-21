@@ -32,7 +32,7 @@ convertGeneticSigma <- function(sigma, kappa, models = chiCorMods) {
     mod1 <- matrix(predict(models[[kapInds[1]]], # predict 1st
                            newdata = data.frame(zcor = c(sigma))),
                    ncol = ncol(sigma))
-    mod2 <- matrix(predict(models[[kapInd[2]]], # predict 2nd
+    mod2 <- matrix(predict(models[[kapInds[2]]], # predict 2nd
                            newdata = data.frame(zcor = c(sigma))),
                    ncol = ncol(sigma))
     ## perform linear interpolation on the log scale
